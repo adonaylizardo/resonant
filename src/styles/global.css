@@ -42,13 +42,13 @@ body,
   width: var(--device-width);
   max-height: calc(100dvh - 2rem);
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) min-content;
   min-height: 0;
   overflow: hidden;
   background:
     linear-gradient(168deg, #B4B0A8 0%, var(--device) 18%, #9E9A92 92%, var(--device-edge) 100%);
   border-radius: 20px;
-  padding: 1rem 0.95rem 1.05rem;
+  padding: 0.85rem 0.95rem 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow:
     0 28px 56px rgba(0, 0, 0, 0.22),
@@ -89,9 +89,9 @@ body,
   align-items: center;
   justify-content: space-between;
   grid-row: 1;
-  padding: 0.15rem 0.35rem 0.7rem;
+  padding: 0.1rem 0.35rem 0.5rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.1rem;
 }
 
 .device__mark {
@@ -171,9 +171,9 @@ body,
   grid-row: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin-bottom: 0.15rem;
-  min-height: 0;
+  gap: 0.35rem;
+  margin-bottom: 0.1rem;
+  min-height: 280px;
   overflow: hidden;
 }
 
@@ -386,14 +386,12 @@ body,
 
 .deck {
   grid-row: 3;
-  min-height: 0;
-  margin-top: 0.35rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  margin-top: 0.2rem;
+  overflow: visible;
 }
 
 .deck__panel {
-  padding: 0.65rem 0.45rem 0.35rem;
+  padding: 0.45rem 0.4rem 0.3rem;
   border-radius: 12px;
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.04) 0%, transparent 8%),
@@ -412,29 +410,29 @@ body,
 
 .deck__row--record {
   justify-content: center;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.3rem;
 }
 
 .deck__row--instruments {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.45rem;
+  gap: 0.35rem;
+  margin-bottom: 0.3rem;
 }
 
 .deck__row--scales {
   display: flex;
   flex-wrap: nowrap;
   justify-content: stretch;
-  gap: 0.35rem;
-  margin-bottom: 0.55rem;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
 }
 
 .deck__row--knobs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
-  padding-top: 0.25rem;
+  gap: 0.35rem;
+  padding-top: 0.2rem;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -476,8 +474,8 @@ body,
 }
 
 .deck__key--instrument {
-  min-height: 50px;
-  padding: 0.55rem 0.4rem;
+  min-height: 46px;
+  padding: 0.45rem 0.35rem;
   font-size: 0.5rem;
   letter-spacing: 0.05em;
 }
@@ -485,17 +483,17 @@ body,
 .deck__key--scale {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 34px;
-  padding: 0.35rem 0.35rem;
+  min-height: 30px;
+  padding: 0.28rem 0.3rem;
   font-size: 0.46rem;
   letter-spacing: 0.08em;
 }
 
 .deck__key--record {
-  min-height: 50px;
-  min-width: 130px;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.52rem;
+  min-height: 44px;
+  min-width: 118px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.5rem;
   letter-spacing: 0.12em;
   border-radius: 5px;
 }
@@ -560,7 +558,7 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.12rem;
   min-width: 0;
   width: 100%;
 }
@@ -577,7 +575,7 @@ body,
 
 .knob__housing {
   position: relative;
-  width: min(52px, 100%);
+  width: min(46px, 100%);
   aspect-ratio: 1;
   flex-shrink: 0;
   border-radius: 50%;
@@ -763,7 +761,11 @@ body,
 @media (min-width: 900px) {
   .device {
     width: 400px;
-    grid-template-rows: auto minmax(400px, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) min-content;
+  }
+
+  .device__screen-well {
+    min-height: 280px;
   }
 
   .deck__row--instruments {
@@ -791,14 +793,20 @@ body,
       - 0.7rem
     );
     max-height: none;
-    grid-template-rows: auto minmax(42dvh, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) min-content;
     border-radius: 16px;
-    padding: 0.65rem 0.75rem 0.7rem;
+    padding: 0.55rem 0.65rem 0.55rem;
     min-height: 0;
   }
 
   .device__top {
-    padding-bottom: 0.45rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .device__screen-well {
+    min-height: 38dvh;
+    gap: 0.25rem;
+    margin-bottom: 0.05rem;
   }
 
   .device__grille {
@@ -807,68 +815,73 @@ body,
   }
 
   .device__screen-bezel {
-    padding: 0.4rem;
+    padding: 0.35rem;
   }
 
   .deck {
-    margin-top: 0.25rem;
-    -webkit-overflow-scrolling: touch;
+    margin-top: 0.15rem;
   }
 
   .deck__panel {
-    padding: 0.4rem 0.3rem 0.2rem;
+    padding: 0.3rem 0.25rem 0.15rem;
   }
 
   .deck__row--record {
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.22rem;
   }
 
   .deck__row--instruments {
-    gap: 0.5rem;
-    margin-bottom: 0.3rem;
+    gap: 0.3rem;
+    margin-bottom: 0.22rem;
   }
 
   .deck__row--scales {
-    gap: 0.25rem;
-    margin-bottom: 0.35rem;
+    gap: 0.22rem;
+    margin-bottom: 0.25rem;
   }
 
   .deck__row--knobs {
-    gap: 0.5rem;
-    padding-top: 0.15rem;
+    gap: 0.3rem;
+    padding-top: 0.12rem;
   }
 
   .deck__key--instrument {
-    min-height: 44px;
-    padding: 0.4rem 0.25rem;
+    min-height: 40px;
+    padding: 0.32rem 0.2rem;
     font-size: 0.44rem;
   }
 
   .deck__key--record {
-    min-height: 44px;
-    padding: 0.4rem 0.7rem;
+    min-height: 38px;
+    min-width: 108px;
+    padding: 0.32rem 0.6rem;
+    font-size: 0.46rem;
   }
 
   .deck__key--scale {
-    min-height: 34px;
-    padding: 0.3rem 0.25rem;
-    font-size: 0.42rem;
+    min-height: 28px;
+    padding: 0.22rem 0.2rem;
+    font-size: 0.4rem;
   }
 
   .knob__housing {
-    width: min(42px, 100%);
+    width: min(40px, 100%);
   }
 
   .knob__dial {
-    inset: 7px;
+    inset: 6px;
   }
 
   .knob__pointer {
-    height: 8px;
+    height: 7px;
   }
 
   .knob__label {
-    font-size: 0.36rem;
-    letter-spacing: 0.08em;
+    font-size: 0.34rem;
+    letter-spacing: 0.07em;
+  }
+
+  .knob__readout {
+    font-size: 0.38rem;
   }
 }
