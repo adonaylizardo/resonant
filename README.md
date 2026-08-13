@@ -4,6 +4,8 @@
 
 A kinetic mini-instrument — a handheld device you pull back and release glowing particles across; every wall hit becomes music.
 
+**Live demo:** https://adonaylizardo.github.io/resonant/ (GitHub Pages deploys from `main`.)
+
 ## Run locally
 
 ```bash
