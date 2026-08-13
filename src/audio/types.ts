@@ -1,6 +1,8 @@
-export type InstrumentId = 'pulse' | 'glass' | 'drift'
+export type InstrumentId = 'piano' | 'harp' | 'marimba' | 'beat'
 
 export type ScaleId = 'major' | 'minor' | 'pentatonic'
+
+export const INSTRUMENT_IDS: InstrumentId[] = ['piano', 'harp', 'marimba', 'beat']
 
 export interface AudioSettings {
   scale: ScaleId
@@ -17,15 +19,17 @@ export interface NoteEvent {
 }
 
 export const INSTRUMENT_COLORS: Record<InstrumentId, string> = {
-  pulse: 'var(--pulse)',
-  glass: 'var(--glass)',
-  drift: 'var(--drift)',
+  piano: 'var(--piano)',
+  harp: 'var(--harp)',
+  marimba: 'var(--marimba)',
+  beat: 'var(--beat)',
 }
 
 export const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
-  pulse: 'PULSE',
-  glass: 'GLASS',
-  drift: 'DRIFT',
+  piano: 'PIANO',
+  harp: 'HARP',
+  marimba: 'MARIMBA',
+  beat: 'BEAT',
 }
 
 export const SCALE_LABELS: Record<ScaleId, string> = {

@@ -27,11 +27,11 @@ Output lands in `dist/`.
 2. **Pull back & release** anywhere on the full device screen — top, bottom, corners, center. Touch down to set an anchor, drag away to stretch the rubber band, release to launch from the anchor opposite your pull.
 3. A **particle counter** at the top of the screen shows how many orbs are live (`01` … `10 / 10`).
 4. Particles **never fade out** — they keep bouncing and sounding on every wall hit until you power off (or the 10-particle cap drops the oldest).
-5. Pick an **instrument** (Pulse, Glass, Drift) before throwing; each particle keeps the voice it was born with.
+5. Pick an **instrument** (Piano, Harp, Marimba, Beat) before throwing; each particle keeps the voice it was born with.
 6. Layer up to **10 particles**. Switch **scale** (Penta / Major / Minor), tweak **Tempo**, **Delay**, and **Momentum**.
 7. **Power off** silences everything and clears the stage. Next boot shows the credits again until you press PWR and throw.
 
-Default: Pulse instrument, Pentatonic scale, tonic D.
+Default: Piano instrument, Pentatonic scale, tonic D.
 
 ## Stack
 

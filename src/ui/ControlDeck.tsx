@@ -1,5 +1,6 @@
 import type { InstrumentId, ScaleId } from '../audio/types'
 import {
+  INSTRUMENT_IDS,
   INSTRUMENT_LABELS,
   SCALE_LABELS,
 } from '../audio/types'
@@ -18,7 +19,6 @@ interface ControlDeckProps {
   onMomentumChange: (v: number) => void
 }
 
-const INSTRUMENTS: InstrumentId[] = ['pulse', 'glass', 'drift']
 const SCALES: ScaleId[] = ['pentatonic', 'major', 'minor']
 
 function tempoReadout(value: number): number {
@@ -75,7 +75,7 @@ export function ControlDeck({
   return (
     <footer className={`deck ${powered ? 'deck--live' : ''}`}>
       <div className="deck__row deck__row--instruments" role="group" aria-label="Instruments">
-        {INSTRUMENTS.map((id) => (
+        {INSTRUMENT_IDS.map((id) => (
           <button
             key={id}
             type="button"

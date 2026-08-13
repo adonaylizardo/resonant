@@ -13,7 +13,7 @@ export default function App() {
   const [powered, setPowered] = useState(false)
   const [hasThrown, setHasThrown] = useState(false)
   const [particleCount, setParticleCount] = useState(0)
-  const [activeInstrument, setActiveInstrument] = useState<InstrumentId>('pulse')
+  const [activeInstrument, setActiveInstrument] = useState<InstrumentId>('piano')
   const [scale, setScale] = useState<ScaleId>('pentatonic')
   const [tempo, setTempo] = useState(0.5)
   const [delay, setDelay] = useState(0.35)
