@@ -9,11 +9,18 @@
   --mist: #C9C4BC;
   --paper: #F3EFE6;
 
-  --page: #C5C1B8;
-  --device: #BAB6AE;
-  --deck: #C8C4BC;
-  --deck-shadow: #9E9A92;
-  --deck-highlight: #E4E0D8;
+  --page: #B8B4AC;
+  --device: #A8A49C;
+  --device-edge: #8E8A82;
+  --deck: #B0ACA4;
+  --deck-face: #A6A29A;
+  --deck-shadow: #6E6A64;
+  --deck-highlight: #D8D4CC;
+  --bezel: #5A5650;
+  --bezel-inner: #2A2826;
+  --knob-face: #C4C0B8;
+  --knob-shadow: #6A6660;
+  --screw: #7A7670;
   --boot-text: #A8C4A0;
   --boot-dim: rgba(168, 196, 160, 0.55);
 
