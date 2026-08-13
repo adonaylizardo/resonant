@@ -302,7 +302,7 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
             )
             pushTrail(p)
 
-            if (wall && impactSpeed > 12 && now - p.lastHitAt > 70) {
+            if (wall && now - p.lastHitAt > 20) {
               p.lastHitAt = now
               const normalizedY = p.y / h
               engine.playWallHit(p.instrument, wall, normalizedY, impactSpeed)

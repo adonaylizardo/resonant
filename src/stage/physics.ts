@@ -10,8 +10,8 @@ export interface CollisionResult {
   impactSpeed: number
 }
 
-/** Minimal air friction — particles stay in motion indefinitely. */
-const FRICTION = 0.99998
+/** No meaningful air friction — energy stays in the system until power off. */
+const FRICTION = 1
 
 export function stepParticle(
   p: Particle,

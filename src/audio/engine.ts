@@ -5,37 +5,37 @@ import { wallToFrequency } from './scales'
 type Wall = 'top' | 'bottom' | 'left' | 'right'
 
 class InstrumentVoice {
-  private synth: Tone.PolySynth | Tone.MetalSynth | Tone.Synth
+  private synth: Tone.PolySynth<Tone.Synth> | Tone.PolySynth<Tone.MetalSynth>
   private output: Tone.Gain
 
   constructor(id: InstrumentId) {
-    this.output = new Tone.Gain(0.9)
+    this.output = new Tone.Gain(0.88)
 
     switch (id) {
       case 'pulse':
         this.synth = new Tone.PolySynth(Tone.Synth, {
           oscillator: { type: 'triangle' },
-          envelope: { attack: 0.04, decay: 0.5, sustain: 0.45, release: 1.4 },
+          envelope: { attack: 0.03, decay: 0.55, sustain: 0.5, release: 1.6 },
         })
-        this.synth.maxPolyphony = 6
         break
       case 'glass':
-        this.synth = new Tone.MetalSynth({
+        this.synth = new Tone.PolySynth(Tone.MetalSynth, {
           harmonicity: 4.2,
           modulationIndex: 24,
           resonance: 3200,
           octaves: 1.2,
-          envelope: { attack: 0.002, decay: 1.2, sustain: 0.15, release: 2.0 },
+          envelope: { attack: 0.002, decay: 1.4, sustain: 0.2, release: 2.2 },
         })
         break
       case 'drift':
-        this.synth = new Tone.Synth({
+        this.synth = new Tone.PolySynth(Tone.Synth, {
           oscillator: { type: 'sine' },
-          envelope: { attack: 0.25, decay: 0.6, sustain: 0.55, release: 2.8 },
+          envelope: { attack: 0.2, decay: 0.7, sustain: 0.6, release: 3.0 },
         })
         break
     }
 
+    this.synth.maxPolyphony = 12
     this.synth.connect(this.output)
   }
 
@@ -44,22 +44,12 @@ class InstrumentVoice {
   }
 
   trigger(frequency: number, velocity: number, duration: string) {
-    const v = Math.max(0.12, Math.min(0.95, velocity))
-    if (this.synth instanceof Tone.PolySynth) {
-      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.75)
-    } else if (this.synth instanceof Tone.MetalSynth) {
-      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.55)
-    } else if (this.synth instanceof Tone.Synth) {
-      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.7)
-    }
+    const v = Math.max(0.22, Math.min(0.88, velocity))
+    this.synth.triggerAttackRelease(frequency, duration, undefined, v)
   }
 
   releaseAll() {
-    if (this.synth instanceof Tone.PolySynth) {
-      this.synth.releaseAll()
-    } else if (this.synth instanceof Tone.Synth) {
-      this.synth.triggerRelease()
-    }
+    this.synth.releaseAll()
   }
 
   dispose() {
@@ -147,7 +137,7 @@ export class AudioEngine {
   }
 
   getRestitution(): number {
-    return 0.88 + this.momentum * 0.1
+    return 0.94 + this.momentum * 0.05
   }
 
   playWallHit(
@@ -159,7 +149,8 @@ export class AudioEngine {
     if (!this.powered || !this.started) return
 
     const frequency = wallToFrequency(wall, normalizedY, this.scale)
-    const velocity = Math.min(1, (impactSpeed / 500) * this.getVelocityScale() + 0.2)
+    const speedFactor = Math.max(impactSpeed, 8) / 350
+    const velocity = Math.max(0.28, Math.min(0.88, speedFactor * this.getVelocityScale() + 0.22))
     const duration =
       instrument === 'drift' ? '2n' : instrument === 'glass' ? '4n' : '4n.'
 
