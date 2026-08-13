@@ -7,6 +7,8 @@ import {
 
 interface ControlDeckProps {
   powered: boolean
+  recording: boolean
+  onRecordToggle: () => void
   activeInstrument: InstrumentId
   onInstrumentChange: (id: InstrumentId) => void
   scale: ScaleId
@@ -61,6 +63,8 @@ function SliderControl({
 
 export function ControlDeck({
   powered,
+  recording,
+  onRecordToggle,
   activeInstrument,
   onInstrumentChange,
   scale,
@@ -74,6 +78,20 @@ export function ControlDeck({
 }: ControlDeckProps) {
   return (
     <footer className={`deck ${powered ? 'deck--live' : ''}`}>
+      <div className="deck__row deck__row--record">
+        <button
+          type="button"
+          className={`deck__btn deck__btn--record ${recording ? 'deck__btn--record-active' : ''}`}
+          onClick={onRecordToggle}
+          disabled={!powered}
+          aria-pressed={recording}
+          aria-label={recording ? 'Stop recording' : 'Start recording'}
+        >
+          <span className={`deck__rec-dot ${recording ? 'deck__rec-dot--live' : ''}`} />
+          {recording ? 'STOP' : 'RECORD'}
+        </button>
+      </div>
+
       <div className="deck__row deck__row--instruments" role="group" aria-label="Instruments">
         {INSTRUMENT_IDS.map((id) => (
           <button

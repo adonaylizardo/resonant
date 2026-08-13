@@ -33,6 +33,17 @@ Output lands in `dist/`.
 
 Default: Piano instrument, Pentatonic scale, tonic D.
 
+## Record / share / download
+
+1. Power on and play. Press **RECORD** on the deck (red dot). Recording starts immediately — keep throwing; the stage stays live.
+2. Press **STOP** (coral) when done. A take modal opens with video preview (stage canvas + synced audio only — no device chrome).
+3. **SHARE** — uses the OS share sheet when the browser supports sharing video files (common on mobile). On desktop, falls back to downloading the video.
+4. **DOWNLOAD VIDEO** — WebM or MP4 depending on browser.
+5. **DOWNLOAD AUDIO** — audio-only WebM (or supported format).
+6. Recordings auto-stop at **60 seconds**. Power off while recording stops the take and opens the modal if anything was captured.
+
+Filenames look like `resonant-2026-08-13.webm`.
+
 ## Stack
 
 - Vite + React + TypeScript
@@ -40,12 +51,13 @@ Default: Piano instrument, Pentatonic scale, tonic D.
 - Tone.js (audio)
 - Custom bounce physics (no Matter.js)
 - CSS design tokens
+- Client-side MediaRecorder (no backend)
 
 ## v1.1 ideas
 
 1. **Reverse effect** — time-stretched echoes on wall hits for surreal playback.
-2. **Record / export** — capture a 30-second performance as WAV or WebM.
-3. **Particle lifetime / clear** — optional gentle fade-out plus a “clear stage” gesture without powering off.
+2. **Particle lifetime / clear** — optional gentle fade-out plus a “clear stage” gesture without powering off.
+3. **MIDI export** — capture wall hits as a simple MIDI file from the same performance.
 
 ---
 

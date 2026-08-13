@@ -196,6 +196,7 @@ export class AudioEngine {
   private voices: Map<InstrumentId, Voice> = new Map()
   private delay: Tone.FeedbackDelay
   private masterGain: Tone.Gain
+  private recordDestination: MediaStreamAudioDestinationNode | null = null
   private started = false
   private powered = false
 
@@ -212,12 +213,25 @@ export class AudioEngine {
       wet: 0.35,
     })
     this.delay.connect(this.masterGain)
+    this.ensureRecordingTap()
 
     for (const id of INSTRUMENT_IDS) {
       const voice = createVoice(id)
       voice.connect(this.delay)
       this.voices.set(id, voice)
     }
+  }
+
+  private ensureRecordingTap() {
+    if (this.recordDestination) return
+    const ctx = Tone.getContext().rawContext as AudioContext
+    this.recordDestination = ctx.createMediaStreamDestination()
+    this.masterGain.connect(this.recordDestination)
+  }
+
+  getRecordingStream(): MediaStream {
+    this.ensureRecordingTap()
+    return this.recordDestination!.stream
   }
 
   async ensureStarted(): Promise<void> {

@@ -22,6 +22,7 @@ const INSTRUMENT_RGB: Record<InstrumentId, [number, number, number]> = {
 
 export interface StageCanvasHandle {
   clearParticles: () => void
+  getCanvas: () => HTMLCanvasElement | null
 }
 
 interface StageCanvasProps {
@@ -208,6 +209,7 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
         slingshotRef.current = null
         emitCount(0)
       },
+      getCanvas: () => canvasRef.current,
     }))
 
     useEffect(() => {
