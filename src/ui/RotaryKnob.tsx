@@ -75,7 +75,6 @@ export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKn
 
   return (
     <div className={`knob ${active ? 'knob--active' : ''}`}>
-      <span className="knob__label">{label}</span>
       <div
         ref={knobRef}
         className="knob__housing"
@@ -96,6 +95,7 @@ export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKn
           <span className="knob__pointer" />
         </div>
       </div>
+      <span className="knob__label">{label}</span>
       {readout !== undefined && <span className="knob__readout">{readout}</span>}
       {active !== undefined && (
         <span className={`knob__led ${active ? 'knob__led--on' : ''}`} aria-hidden="true" />
