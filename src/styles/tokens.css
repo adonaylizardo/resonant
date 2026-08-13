@@ -1,0 +1,31 @@
+:root {
+  --stage: #070708;
+  --piano: #4DA3FF;
+  --harp: #5FD468;
+  --marimba: #E85858;
+  --beat: #A56BFF;
+  --live: #FF5A36;
+  --charcoal: #161618;
+  --mist: #C9C4BC;
+  --paper: #F3EFE6;
+
+  --page: #B8B4AC;
+  --device: #A8A49C;
+  --device-edge: #8E8A82;
+  --deck: #B0ACA4;
+  --deck-face: #A6A29A;
+  --deck-shadow: #6E6A64;
+  --deck-highlight: #D8D4CC;
+  --bezel: #5A5650;
+  --bezel-inner: #2A2826;
+  --knob-face: #C4C0B8;
+  --knob-shadow: #6A6660;
+  --screw: #7A7670;
+  --boot-text: #A8C4A0;
+  --boot-dim: rgba(168, 196, 160, 0.55);
+
+  --font-hero: 'Syne', sans-serif;
+  --font-mono: 'Fragment Mono', monospace;
+
+  --device-width: min(400px, calc(100vw - 2rem));
+}
