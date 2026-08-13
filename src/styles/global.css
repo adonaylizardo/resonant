@@ -13,6 +13,7 @@ body,
 #root {
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
   background: var(--page);
   color: var(--charcoal);
@@ -746,22 +747,123 @@ body,
 }
 
 @media (max-width: 440px) {
-  .page { padding: 0.65rem; }
+  .page {
+    align-items: stretch;
+    justify-content: stretch;
+    padding:
+      max(0.35rem, env(safe-area-inset-top))
+      max(0.35rem, env(safe-area-inset-right))
+      max(0.35rem, env(safe-area-inset-bottom))
+      max(0.35rem, env(safe-area-inset-left));
+  }
 
   .device {
     width: 100%;
-    max-height: calc(100vh - 1.3rem);
+    height: calc(
+      100dvh
+      - env(safe-area-inset-top)
+      - env(safe-area-inset-bottom)
+      - 0.7rem
+    );
+    max-height: none;
     border-radius: 16px;
+    padding: 0.65rem 0.75rem 0.7rem;
+    min-height: 0;
+  }
+
+  .device__top {
+    flex-shrink: 0;
+    padding-bottom: 0.45rem;
+  }
+
+  .device__screen-well {
+    flex: 1 1 0;
+    min-height: 48dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .device__grille {
+    height: 6px;
+    flex-shrink: 0;
+    margin: 0 0.35rem;
+  }
+
+  .device__screen-bezel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0.4rem;
   }
 
   .device__screen {
+    flex: 1 1 auto;
+    min-height: 45dvh;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .deck {
+    flex: 0 1 auto;
     min-height: 0;
-    flex: 1;
+    margin-top: 0.25rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .deck__panel {
+    padding: 0.45rem 0.35rem 0.25rem;
+  }
+
+  .deck__row--record {
+    margin-bottom: 0.3rem;
+  }
+
+  .deck__row--instruments {
+    gap: 0.35rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .deck__row--scales {
+    gap: 0.25rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .deck__row--knobs {
+    gap: 0.25rem;
+    padding-top: 0.15rem;
+  }
+
+  .deck__key--instrument {
+    min-height: 44px;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.46rem;
+  }
+
+  .deck__key--record {
+    min-height: 44px;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .deck__key--scale {
+    min-height: 34px;
+    min-width: 48px;
+    padding: 0.3rem 0.4rem;
   }
 
   .knob__housing {
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .knob__dial {
+    inset: 7px;
+  }
+
+  .knob__pointer {
+    height: 8px;
   }
 }
 
