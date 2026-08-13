@@ -377,11 +377,13 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
         const dist = Math.hypot(dx, dy)
 
         if (dist >= DRAG_THRESHOLD) {
+          const screenH = canvasRef.current?.clientHeight
           const { vx, vy } = computeLaunchVelocity(
             shot.originX,
             shot.originY,
             shot.pointerX,
             shot.pointerY,
+            screenH,
           )
           void spawnParticle(shot.originX, shot.originY, vx, vy)
         }

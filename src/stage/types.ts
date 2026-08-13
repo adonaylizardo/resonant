@@ -25,9 +25,12 @@ export const PARTICLE_RADIUS = 7
 /** Minimum pull distance (CSS px) before a throw fires. */
 export const DRAG_THRESHOLD = 3
 
-const THROW_SCALE = 10
-const MIN_LAUNCH_SPEED = 90
-const MAX_LAUNCH_SPEED = 580
+/** Speed at the shortest valid pull — lazy but musical. */
+const MIN_LAUNCH_SPEED = 52
+/** Speed at a full-screen pull — fast, never a laser. */
+const MAX_LAUNCH_SPEED = 420
+/** Fallback pull distance (CSS px) that maps to max speed when screen size unknown. */
+const REF_PULL_PX = 200
 
 let nextId = 1
 
@@ -52,29 +55,32 @@ export function createParticle(
   }
 }
 
-/** Slingshot: launch opposite the pull, clamped to a playable speed range. */
+/**
+ * Slingshot: launch opposite the pull. Speed scales with pull distance only
+ * (not release velocity). Linear-ish curve from gentle floor to clamped ceiling.
+ */
 export function computeLaunchVelocity(
   originX: number,
   originY: number,
   pointerX: number,
   pointerY: number,
+  screenHeight?: number,
 ): { vx: number; vy: number } {
   const dx = pointerX - originX
   const dy = pointerY - originY
-  let vx = -dx * THROW_SCALE
-  let vy = -dy * THROW_SCALE
-  const speed = Math.hypot(vx, vy)
-  if (speed === 0) return { vx: 0, vy: 0 }
-  if (speed < MIN_LAUNCH_SPEED) {
-    const scale = MIN_LAUNCH_SPEED / speed
-    vx *= scale
-    vy *= scale
-  } else if (speed > MAX_LAUNCH_SPEED) {
-    const scale = MAX_LAUNCH_SPEED / speed
-    vx *= scale
-    vy *= scale
+  const pull = Math.hypot(dx, dy)
+  if (pull === 0) return { vx: 0, vy: 0 }
+
+  const refPull = screenHeight ? screenHeight * 0.48 : REF_PULL_PX
+  const range = Math.max(refPull - DRAG_THRESHOLD, 1)
+  const t = Math.min(1, Math.max(0, (pull - DRAG_THRESHOLD) / range))
+  const eased = t * (2 - t)
+  const speed = MIN_LAUNCH_SPEED + eased * (MAX_LAUNCH_SPEED - MIN_LAUNCH_SPEED)
+
+  return {
+    vx: (-dx / pull) * speed,
+    vy: (-dy / pull) * speed,
   }
-  return { vx, vy }
 }
 
 export function pushTrail(p: Particle) {
