@@ -7,6 +7,8 @@ import {
   enforceCap,
   pushTrail,
   DRAG_THRESHOLD,
+  computeLaunchVelocity,
+  PARTICLE_RADIUS,
   type Particle,
 } from './types'
 import { stepParticle } from './physics'
@@ -26,14 +28,15 @@ interface StageCanvasProps {
   powered: boolean
   hasThrown: boolean
   onFirstThrow: () => void
+  onParticleCountChange?: (count: number) => void
 }
 
-interface DragState {
+interface SlingshotState {
   active: boolean
-  startX: number
-  startY: number
-  currentX: number
-  currentY: number
+  originX: number
+  originY: number
+  pointerX: number
+  pointerY: number
   pointerId: number
 }
 
@@ -105,50 +108,110 @@ function drawParticle(
   ctx.restore()
 }
 
-function drawAimLine(
+function drawGhostOrb(
   ctx: CanvasRenderingContext2D,
-  drag: DragState,
+  x: number,
+  y: number,
+  radius: number,
   color: string,
+  [r, g, b]: [number, number, number],
 ) {
-  const dx = drag.startX - drag.currentX
-  const dy = drag.startY - drag.currentY
   ctx.save()
-  ctx.strokeStyle = color
-  ctx.globalAlpha = 0.4
-  ctx.lineWidth = 1
-  ctx.setLineDash([3, 5])
-  ctx.beginPath()
-  ctx.moveTo(drag.startX, drag.startY)
-  ctx.lineTo(drag.startX + dx * 0.3, drag.startY + dy * 0.3)
-  ctx.stroke()
-  ctx.restore()
-
-  ctx.save()
-  ctx.shadowBlur = 10
+  ctx.globalAlpha = 0.6
+  ctx.shadowBlur = 14
   ctx.shadowColor = color
-  ctx.fillStyle = color
-  ctx.globalAlpha = 0.75
   ctx.beginPath()
-  ctx.arc(drag.startX, drag.startY, 4, 0, Math.PI * 2)
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  const core = ctx.createRadialGradient(x, y, 0, x, y, radius)
+  core.addColorStop(0, 'rgba(255,255,255,0.85)')
+  core.addColorStop(0.45, color)
+  core.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.25)`)
+  ctx.fillStyle = core
   ctx.fill()
   ctx.restore()
 }
 
+function drawSlingshot(
+  ctx: CanvasRenderingContext2D,
+  shot: SlingshotState,
+  color: string,
+  rgb: [number, number, number],
+) {
+  const { originX, originY, pointerX, pointerY } = shot
+
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.globalAlpha = 0.9
+  ctx.lineWidth = 2.25
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(originX, originY)
+  ctx.lineTo(pointerX, pointerY)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.globalAlpha = 0.65
+  ctx.lineWidth = 1
+  const arm = 7
+  ctx.beginPath()
+  ctx.moveTo(originX - arm, originY)
+  ctx.lineTo(originX + arm, originY)
+  ctx.moveTo(originX, originY - arm)
+  ctx.lineTo(originX, originY + arm)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(originX, originY, 3.5, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
+
+  drawGhostOrb(ctx, pointerX, pointerY, PARTICLE_RADIUS, color, rgb)
+
+  const dx = originX - pointerX
+  const dy = originY - pointerY
+  const len = Math.hypot(dx, dy) || 1
+  const tickLen = Math.min(48, len * 0.4)
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.globalAlpha = 0.22
+  ctx.lineWidth = 1
+  ctx.setLineDash([3, 5])
+  ctx.beginPath()
+  ctx.moveTo(originX, originY)
+  ctx.lineTo(originX + (dx / len) * tickLen, originY + (dy / len) * tickLen)
+  ctx.stroke()
+  ctx.restore()
+}
+
 export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
-  function StageCanvas({ activeInstrument, powered, hasThrown, onFirstThrow }, ref) {
+  function StageCanvas(
+    { activeInstrument, powered, hasThrown, onFirstThrow, onParticleCountChange },
+    ref,
+  ) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const particlesRef = useRef<Particle[]>([])
-    const dragRef = useRef<DragState | null>(null)
+    const slingshotRef = useRef<SlingshotState | null>(null)
     const rafRef = useRef<number>(0)
     const instrumentRef = useRef(activeInstrument)
     const poweredRef = useRef(powered)
+    const countCbRef = useRef(onParticleCountChange)
+
+    const emitCount = useCallback((count: number) => {
+      countCbRef.current?.(count)
+    }, [])
 
     useImperativeHandle(ref, () => ({
       clearParticles: () => {
         particlesRef.current = []
-        dragRef.current = null
+        slingshotRef.current = null
+        emitCount(0)
       },
     }))
+
+    useEffect(() => {
+      countCbRef.current = onParticleCountChange
+    }, [onParticleCountChange])
 
     useEffect(() => {
       instrumentRef.current = activeInstrument
@@ -158,9 +221,10 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
       poweredRef.current = powered
       if (!powered) {
         particlesRef.current = []
-        dragRef.current = null
+        slingshotRef.current = null
+        emitCount(0)
       }
-    }, [powered])
+    }, [powered, emitCount])
 
     const spawnParticle = useCallback(
       async (x: number, y: number, vx: number, vy: number) => {
@@ -170,10 +234,11 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
 
         const particle = createParticle(x, y, vx, vy, instrumentRef.current)
         particlesRef.current = enforceCap([...particlesRef.current, particle])
+        emitCount(particlesRef.current.length)
 
         if (!hasThrown) onFirstThrow()
       },
-      [hasThrown, onFirstThrow],
+      [hasThrown, onFirstThrow, emitCount],
     )
 
     const getPoint = useCallback((clientX: number, clientY: number) => {
@@ -195,13 +260,21 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
       const resize = () => {
         const dpr = Math.min(window.devicePixelRatio || 1, 2)
         const rect = canvas.getBoundingClientRect()
-        canvas.width = rect.width * dpr
-        canvas.height = rect.height * dpr
+        if (rect.width === 0 || rect.height === 0) return
+        canvas.width = Math.round(rect.width * dpr)
+        canvas.height = Math.round(rect.height * dpr)
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       }
 
       resize()
-      window.addEventListener('resize', resize)
+
+      const ro = new ResizeObserver(() => {
+        resize()
+      })
+      ro.observe(canvas)
+
+      const screenEl = canvas.closest('.device__screen')
+      if (screenEl) ro.observe(screenEl)
 
       let last = performance.now()
 
@@ -242,10 +315,11 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
             drawParticle(ctx, p, color, rgb)
           }
 
-          const drag = dragRef.current
-          if (drag?.active) {
+          const shot = slingshotRef.current
+          if (shot?.active) {
+            const rgb = INSTRUMENT_RGB[instrumentRef.current]
             const color = resolveColor(instrumentRef.current)
-            drawAimLine(ctx, drag, color)
+            drawSlingshot(ctx, shot, color, rgb)
           }
         }
 
@@ -257,7 +331,7 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
       rafRef.current = requestAnimationFrame(loop)
 
       return () => {
-        window.removeEventListener('resize', resize)
+        ro.disconnect()
         cancelAnimationFrame(rafRef.current)
       }
     }, [])
@@ -265,16 +339,17 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
     const onPointerDown = useCallback(
       (e: React.PointerEvent) => {
         if (!poweredRef.current) return
+        e.preventDefault()
         const canvas = canvasRef.current
         if (!canvas) return
         canvas.setPointerCapture(e.pointerId)
         const { x, y } = getPoint(e.clientX, e.clientY)
-        dragRef.current = {
+        slingshotRef.current = {
           active: true,
-          startX: x,
-          startY: y,
-          currentX: x,
-          currentY: y,
+          originX: x,
+          originY: y,
+          pointerX: x,
+          pointerY: y,
           pointerId: e.pointerId,
         }
       },
@@ -283,32 +358,35 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
 
     const onPointerMove = useCallback(
       (e: React.PointerEvent) => {
-        const drag = dragRef.current
-        if (!drag?.active || drag.pointerId !== e.pointerId) return
+        const shot = slingshotRef.current
+        if (!shot?.active || shot.pointerId !== e.pointerId) return
         const { x, y } = getPoint(e.clientX, e.clientY)
-        drag.currentX = x
-        drag.currentY = y
+        shot.pointerX = x
+        shot.pointerY = y
       },
       [getPoint],
     )
 
     const onPointerUp = useCallback(
       (e: React.PointerEvent) => {
-        const drag = dragRef.current
-        if (!drag?.active || drag.pointerId !== e.pointerId) return
+        const shot = slingshotRef.current
+        if (!shot?.active || shot.pointerId !== e.pointerId) return
 
-        const dx = drag.currentX - drag.startX
-        const dy = drag.currentY - drag.startY
+        const dx = shot.pointerX - shot.originX
+        const dy = shot.pointerY - shot.originY
         const dist = Math.hypot(dx, dy)
 
         if (dist >= DRAG_THRESHOLD) {
-          const throwScale = 10
-          const vx = -dx * throwScale
-          const vy = -dy * throwScale
-          void spawnParticle(drag.startX, drag.startY, vx, vy)
+          const { vx, vy } = computeLaunchVelocity(
+            shot.originX,
+            shot.originY,
+            shot.pointerX,
+            shot.pointerY,
+          )
+          void spawnParticle(shot.originX, shot.originY, vx, vy)
         }
 
-        dragRef.current = null
+        slingshotRef.current = null
         canvasRef.current?.releasePointerCapture(e.pointerId)
       },
       [spawnParticle],

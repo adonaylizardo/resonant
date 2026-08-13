@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InstrumentId, ScaleId } from './audio/types'
 import { getAudioEngine } from './audio/engine'
+import { MAX_PARTICLES } from './stage/types'
 import { StageCanvas, type StageCanvasHandle } from './stage/StageCanvas'
 import { Device } from './ui/Device'
 import { BootScreen } from './ui/BootScreen'
 import { ControlDeck } from './ui/ControlDeck'
 import { EmptyHint } from './ui/EmptyHint'
+import { ParticleCounter } from './ui/ParticleCounter'
 
 export default function App() {
   const [powered, setPowered] = useState(false)
   const [hasThrown, setHasThrown] = useState(false)
+  const [particleCount, setParticleCount] = useState(0)
   const [activeInstrument, setActiveInstrument] = useState<InstrumentId>('pulse')
   const [scale, setScale] = useState<ScaleId>('pentatonic')
   const [tempo, setTempo] = useState(0.5)
@@ -42,6 +45,7 @@ export default function App() {
     if (!next) {
       stageRef.current?.clearParticles()
       setHasThrown(false)
+      setParticleCount(0)
       engine.setPowered(false)
       setPowered(false)
     } else {
@@ -52,6 +56,10 @@ export default function App() {
 
   const handleFirstThrow = useCallback(() => {
     setHasThrown(true)
+  }, [])
+
+  const handleParticleCountChange = useCallback((count: number) => {
+    setParticleCount(count)
   }, [])
 
   return (
@@ -67,7 +75,9 @@ export default function App() {
               powered={powered}
               hasThrown={hasThrown}
               onFirstThrow={handleFirstThrow}
+              onParticleCountChange={handleParticleCountChange}
             />
+            <ParticleCounter count={particleCount} max={MAX_PARTICLES} />
             <EmptyHint visible={!hasThrown} />
           </>
         ) : (
