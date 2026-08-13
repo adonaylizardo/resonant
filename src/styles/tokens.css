@@ -1,0 +1,16 @@
+:root {
+  --stage: #070708;
+  --pulse: #E8A54B;
+  --glass: #7EE0EA;
+  --drift: #C47BFF;
+  --live: #FF5A36;
+  --charcoal: #161618;
+  --mist: #C9C4BC;
+  --paper: #F3EFE6;
+
+  --font-hero: 'Syne', sans-serif;
+  --font-mono: 'Fragment Mono', monospace;
+
+  --rail-height: auto;
+  --header-pad: clamp(1rem, 3vw, 1.75rem);
+}
