@@ -10,8 +10,8 @@ export interface CollisionResult {
   impactSpeed: number
 }
 
-const FRICTION = 0.9995
-const MIN_SPEED = 0.3
+/** Minimal air friction — particles stay in motion indefinitely. */
+const FRICTION = 0.99998
 
 export function stepParticle(
   p: Particle,
@@ -56,12 +56,6 @@ export function stepParticle(
       wall = 'bottom'
     }
     p.vy = -Math.abs(p.vy) * restitution
-  }
-
-  const speed = Math.hypot(p.vx, p.vy)
-  if (speed < MIN_SPEED && speed > 0) {
-    p.vx *= 0.98
-    p.vy *= 0.98
   }
 
   return { wall, impactSpeed }

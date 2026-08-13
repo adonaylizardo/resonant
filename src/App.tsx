@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InstrumentId, ScaleId } from './audio/types'
 import { getAudioEngine } from './audio/engine'
-import { StageCanvas } from './stage/StageCanvas'
-import { Header } from './ui/Header'
-import { ControlRail } from './ui/ControlRail'
+import { StageCanvas, type StageCanvasHandle } from './stage/StageCanvas'
+import { Device } from './ui/Device'
+import { BootScreen } from './ui/BootScreen'
+import { ControlDeck } from './ui/ControlDeck'
 import { EmptyHint } from './ui/EmptyHint'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
   const [delay, setDelay] = useState(0.35)
   const [momentum, setMomentum] = useState(0.65)
 
+  const stageRef = useRef<StageCanvasHandle>(null)
   const engine = getAudioEngine()
 
   useEffect(() => {
@@ -36,47 +38,57 @@ export default function App() {
   const handlePowerToggle = useCallback(async () => {
     await engine.ensureStarted()
     const next = !powered
-    setPowered(next)
-    engine.setPowered(next)
-  }, [engine, powered])
 
-  const handlePowerOn = useCallback(async () => {
-    await engine.ensureStarted()
-    setPowered(true)
-    engine.setPowered(true)
-  }, [engine])
+    if (!next) {
+      stageRef.current?.clearParticles()
+      setHasThrown(false)
+      engine.setPowered(false)
+      setPowered(false)
+    } else {
+      engine.setPowered(true)
+      setPowered(true)
+    }
+  }, [engine, powered])
 
   const handleFirstThrow = useCallback(() => {
     setHasThrown(true)
   }, [])
 
   return (
-    <div className="app">
-      <Header />
-      <div className="stage-wrap">
-        <StageCanvas
-          activeInstrument={activeInstrument}
+    <Device
+      powered={powered}
+      onPowerToggle={handlePowerToggle}
+      screen={
+        powered ? (
+          <>
+            <StageCanvas
+              ref={stageRef}
+              activeInstrument={activeInstrument}
+              powered={powered}
+              hasThrown={hasThrown}
+              onFirstThrow={handleFirstThrow}
+            />
+            <EmptyHint visible={!hasThrown} />
+          </>
+        ) : (
+          <BootScreen />
+        )
+      }
+      deck={
+        <ControlDeck
           powered={powered}
-          hasThrown={hasThrown}
-          onFirstThrow={handleFirstThrow}
-          onPowerOn={handlePowerOn}
+          activeInstrument={activeInstrument}
+          onInstrumentChange={setActiveInstrument}
+          scale={scale}
+          onScaleChange={setScale}
+          tempo={tempo}
+          onTempoChange={setTempo}
+          delay={delay}
+          onDelayChange={setDelay}
+          momentum={momentum}
+          onMomentumChange={setMomentum}
         />
-        <EmptyHint visible={!hasThrown} />
-      </div>
-      <ControlRail
-        powered={powered}
-        onPowerToggle={handlePowerToggle}
-        activeInstrument={activeInstrument}
-        onInstrumentChange={setActiveInstrument}
-        scale={scale}
-        onScaleChange={setScale}
-        tempo={tempo}
-        onTempoChange={setTempo}
-        delay={delay}
-        onDelayChange={setDelay}
-        momentum={momentum}
-        onMomentumChange={setMomentum}
-      />
-    </div>
+      }
+    />
   )
 }

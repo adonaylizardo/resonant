@@ -8,9 +8,16 @@
   --mist: #C9C4BC;
   --paper: #F3EFE6;
 
+  --page: #C5C1B8;
+  --device: #BAB6AE;
+  --deck: #C8C4BC;
+  --deck-shadow: #9E9A92;
+  --deck-highlight: #E4E0D8;
+  --boot-text: #A8C4A0;
+  --boot-dim: rgba(168, 196, 160, 0.55);
+
   --font-hero: 'Syne', sans-serif;
   --font-mono: 'Fragment Mono', monospace;
 
-  --rail-height: auto;
-  --header-pad: clamp(1rem, 3vw, 1.75rem);
+  --device-width: min(400px, calc(100vw - 2rem));
 }

@@ -2,7 +2,7 @@
 
 **Throw light. Catch sound.**
 
-A kinetic mini-instrument — drag glowing particles across a cinematic stage and let wall collisions become music.
+A kinetic mini-instrument — a handheld device you drag glowing particles across; every wall hit becomes music.
 
 ## Run locally
 
@@ -23,19 +23,19 @@ Output lands in `dist/`.
 
 ## How to play (30 seconds)
 
-1. **Power on** (bottom rail) — the coral dot means live audio.
-2. **Drag and release** on the black stage to throw a glowing particle. Your throw direction and speed set its trajectory.
-3. Particles **bounce off walls** — each hit plays a note quantized to the selected scale, so it always sounds musical.
+1. **Resonant boots powered off** — the screen shows a short credits message. Press **PWR** (top right) to turn on. The coral LED means live audio.
+2. **Drag and release** inside the device screen to throw a glowing particle. Throws stay inside the small screen — short, natural bounces.
+3. Particles **never fade out** — they keep bouncing and sounding on every wall hit until you power off (or the 10-particle cap drops the oldest).
 4. Pick an **instrument** (Pulse, Glass, Drift) before throwing; each particle keeps the voice it was born with.
-5. Layer up to **10 particles** at once. Switch **scale** (Penta / Major / Minor), tweak **Tempo**, **Delay**, and **Momentum** to taste.
-6. **Power off** to mute and stop all sound cleanly.
+5. Layer up to **10 particles**. Switch **scale** (Penta / Major / Minor), tweak **Tempo**, **Delay**, and **Momentum**.
+6. **Power off** silences everything and clears the stage. Next boot shows the credits again until you press PWR and throw.
 
 Default: Pulse instrument, Pentatonic scale, tonic D.
 
 ## Stack
 
 - Vite + React + TypeScript
-- HTML Canvas 2D (stage, particles, trails)
+- HTML Canvas 2D (device screen, particles, trails)
 - Tone.js (audio)
 - Custom bounce physics (no Matter.js)
 - CSS design tokens
@@ -44,7 +44,7 @@ Default: Pulse instrument, Pentatonic scale, tonic D.
 
 1. **Reverse effect** — time-stretched echoes on wall hits for surreal playback.
 2. **Record / export** — capture a 30-second performance as WAV or WebM.
-3. **Particle lifetime / clear** — gentle fade-out over time plus a “clear stage” gesture to reset without reloading.
+3. **Particle lifetime / clear** — optional gentle fade-out plus a “clear stage” gesture without powering off.
 
 ---
 

@@ -5,33 +5,33 @@ import { wallToFrequency } from './scales'
 type Wall = 'top' | 'bottom' | 'left' | 'right'
 
 class InstrumentVoice {
-  private synth: Tone.PolySynth | Tone.MetalSynth | Tone.PluckSynth
+  private synth: Tone.PolySynth | Tone.MetalSynth | Tone.Synth
   private output: Tone.Gain
 
   constructor(id: InstrumentId) {
-    this.output = new Tone.Gain(0.85)
+    this.output = new Tone.Gain(0.9)
 
     switch (id) {
       case 'pulse':
         this.synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: 'sine' },
-          envelope: { attack: 0.02, decay: 0.35, sustain: 0.08, release: 0.4 },
+          oscillator: { type: 'triangle' },
+          envelope: { attack: 0.04, decay: 0.5, sustain: 0.45, release: 1.4 },
         })
+        this.synth.maxPolyphony = 6
         break
       case 'glass':
         this.synth = new Tone.MetalSynth({
-          harmonicity: 5.1,
-          modulationIndex: 32,
-          resonance: 4000,
-          octaves: 1.5,
-          envelope: { attack: 0.001, decay: 0.8, release: 1.2 },
+          harmonicity: 4.2,
+          modulationIndex: 24,
+          resonance: 3200,
+          octaves: 1.2,
+          envelope: { attack: 0.002, decay: 1.2, sustain: 0.15, release: 2.0 },
         })
         break
       case 'drift':
-        this.synth = new Tone.PluckSynth({
-          attackNoise: 0.4,
-          dampening: 2400,
-          resonance: 0.92,
+        this.synth = new Tone.Synth({
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.25, decay: 0.6, sustain: 0.55, release: 2.8 },
         })
         break
     }
@@ -44,20 +44,21 @@ class InstrumentVoice {
   }
 
   trigger(frequency: number, velocity: number, duration: string) {
-    const v = Math.max(0.08, Math.min(0.95, velocity))
+    const v = Math.max(0.12, Math.min(0.95, velocity))
     if (this.synth instanceof Tone.PolySynth) {
-      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.7)
+      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.75)
     } else if (this.synth instanceof Tone.MetalSynth) {
-      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.5)
-    } else if (this.synth instanceof Tone.PluckSynth) {
-      this.output.gain.setValueAtTime(v * 0.8, Tone.now())
-      this.synth.triggerAttack(frequency)
+      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.55)
+    } else if (this.synth instanceof Tone.Synth) {
+      this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.7)
     }
   }
 
   releaseAll() {
     if (this.synth instanceof Tone.PolySynth) {
       this.synth.releaseAll()
+    } else if (this.synth instanceof Tone.Synth) {
+      this.synth.triggerRelease()
     }
   }
 
@@ -83,7 +84,7 @@ export class AudioEngine {
     this.masterGain = new Tone.Gain(0).toDestination()
     this.delay = new Tone.FeedbackDelay({
       delayTime: '8n',
-      feedback: 0.35,
+      feedback: 0.4,
       wet: 0.35,
     })
     this.delay.connect(this.masterGain)
@@ -122,7 +123,7 @@ export class AudioEngine {
   setDelay(amount: number) {
     this.delayAmount = amount
     this.delay.wet.rampTo(amount, 0.1)
-    this.delay.feedback.rampTo(amount * 0.65, 0.1)
+    this.delay.feedback.rampTo(0.15 + amount * 0.55, 0.1)
   }
 
   setTempo(amount: number) {
@@ -142,11 +143,11 @@ export class AudioEngine {
   }
 
   getVelocityScale(): number {
-    return 0.35 + this.momentum * 0.65
+    return 0.45 + this.momentum * 0.55
   }
 
   getRestitution(): number {
-    return 0.55 + this.momentum * 0.4
+    return 0.88 + this.momentum * 0.1
   }
 
   playWallHit(
@@ -158,8 +159,9 @@ export class AudioEngine {
     if (!this.powered || !this.started) return
 
     const frequency = wallToFrequency(wall, normalizedY, this.scale)
-    const velocity = Math.min(1, (impactSpeed / 800) * this.getVelocityScale() + 0.15)
-    const duration = instrument === 'drift' ? '2n' : instrument === 'glass' ? '8n' : '16n'
+    const velocity = Math.min(1, (impactSpeed / 500) * this.getVelocityScale() + 0.2)
+    const duration =
+      instrument === 'drift' ? '2n' : instrument === 'glass' ? '4n' : '4n.'
 
     this.voices.get(instrument)?.trigger(frequency, velocity, duration)
   }
