@@ -1,4 +1,4 @@
-import type { ScaleId } from './types'
+import type { InstrumentId, ScaleId } from './types'
 
 /** Default tonic: D4 */
 export const TONIC = 'D4'
@@ -61,9 +61,10 @@ export function wallToFrequency(
   normalizedY: number,
   scale: ScaleId,
   tonic = TONIC,
+  instrument?: InstrumentId,
 ): number {
-  const base = yToFrequency(normalizedY, scale, tonic)
   const freqs = buildScaleFrequencies(scale, tonic)
+  const base = yToFrequency(normalizedY, scale, tonic)
   const baseIndex = freqs.findIndex((f) => f >= base) || 0
   const offsets: Record<typeof wall, number> = {
     top: 2,
@@ -71,6 +72,14 @@ export function wallToFrequency(
     left: 0,
     right: 1,
   }
-  const idx = Math.max(0, Math.min(freqs.length - 1, baseIndex + offsets[wall]))
+  let idx = Math.max(0, Math.min(freqs.length - 1, baseIndex + offsets[wall]))
+
+  if (instrument === 'piano') {
+    const midStart = Math.floor(freqs.length * 0.25)
+    const midEnd = Math.ceil(freqs.length * 0.75)
+    idx = Math.max(midStart, Math.min(midEnd, idx))
+    return freqs[idx]
+  }
+
   return freqs[idx]
 }

@@ -14,10 +14,10 @@ import {
 import { stepParticle } from './physics'
 
 const INSTRUMENT_RGB: Record<InstrumentId, [number, number, number]> = {
-  piano: [232, 165, 75],
-  harp: [126, 224, 234],
-  marimba: [212, 139, 82],
-  beat: [196, 123, 255],
+  piano: [77, 163, 255],
+  harp: [95, 212, 104],
+  marimba: [232, 88, 88],
+  beat: [165, 107, 255],
 }
 
 export interface StageCanvasHandle {

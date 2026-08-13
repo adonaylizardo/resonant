@@ -5,10 +5,12 @@ import { wallToFrequency } from './scales'
 
 type Wall = 'top' | 'bottom' | 'left' | 'right'
 
-type VoiceSynth =
-  | Tone.PolySynth<Tone.Synth>
-  | Tone.PolySynth<Tone.AMSynth>
-  | Tone.PolySynth<Tone.MembraneSynth>
+interface Voice {
+  connect(destination: Tone.InputNode): void
+  trigger(frequency: number, velocity: number, duration: string): void
+  releaseAll(): void
+  dispose(): void
+}
 
 const NOTE_DURATIONS: Record<InstrumentId, string> = {
   piano: '4n.',
@@ -17,45 +19,63 @@ const NOTE_DURATIONS: Record<InstrumentId, string> = {
   beat: '16n',
 }
 
-class InstrumentVoice {
-  private synth: VoiceSynth
+/** Hammer transient + decaying tonal body. */
+class PianoVoice implements Voice {
+  private body: Tone.PolySynth<Tone.Synth>
+  private hammer: Tone.NoiseSynth
   private output: Tone.Gain
 
-  constructor(id: InstrumentId) {
-    this.output = new Tone.Gain(0.85)
+  constructor() {
+    this.output = new Tone.Gain(0.78)
+    this.body = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.006, decay: 0.85, sustain: 0.1, release: 1.3 },
+    })
+    this.hammer = new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: 0.035, sustain: 0, release: 0.015 },
+    })
+    this.body.maxPolyphony = 12
+    this.body.connect(this.output)
+    this.hammer.connect(this.output)
+  }
 
-    switch (id) {
-      case 'piano':
-        this.synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: 'triangle' },
-          envelope: { attack: 0.06, decay: 0.45, sustain: 0.35, release: 1.5 },
-        })
-        break
-      case 'harp':
-        this.synth = new Tone.PolySynth(Tone.AMSynth, {
-          harmonicity: 2.8,
-          oscillator: { type: 'sine' },
-          envelope: { attack: 0.008, decay: 0.5, sustain: 0.25, release: 2.6 },
-          modulation: { type: 'sine' },
-          modulationEnvelope: { attack: 0.015, decay: 0.25, sustain: 0, release: 0.4 },
-        })
-        break
-      case 'marimba':
-        this.synth = new Tone.PolySynth(Tone.MembraneSynth, {
-          pitchDecay: 0.04,
-          octaves: 2.2,
-          envelope: { attack: 0.002, decay: 0.55, sustain: 0.04, release: 0.9 },
-        })
-        break
-      case 'beat':
-        this.synth = new Tone.PolySynth(Tone.MembraneSynth, {
-          pitchDecay: 0.06,
-          octaves: 1.4,
-          envelope: { attack: 0.001, decay: 0.28, sustain: 0, release: 0.35 },
-        })
-        break
-    }
+  connect(destination: Tone.InputNode) {
+    this.output.connect(destination)
+  }
 
+  trigger(frequency: number, velocity: number, duration: string) {
+    const v = Math.max(0.2, Math.min(0.78, velocity))
+    this.body.triggerAttackRelease(frequency, duration, undefined, v * 0.72)
+    this.hammer.triggerAttackRelease('64n', undefined, v * 0.18)
+  }
+
+  releaseAll() {
+    this.body.releaseAll()
+  }
+
+  dispose() {
+    this.body.dispose()
+    this.hammer.dispose()
+    this.output.dispose()
+  }
+}
+
+/** Bright pluck with fast decay and airy sparkle. */
+class HarpVoice implements Voice {
+  private synth: Tone.PolySynth<Tone.FMSynth>
+  private output: Tone.Gain
+
+  constructor() {
+    this.output = new Tone.Gain(0.72)
+    this.synth = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 2.4,
+      modulationIndex: 1.4,
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.38, sustain: 0.06, release: 2.4 },
+      modulation: { type: 'triangle' },
+      modulationEnvelope: { attack: 0.001, decay: 0.12, sustain: 0, release: 0.25 },
+    })
     this.synth.maxPolyphony = 12
     this.synth.connect(this.output)
   }
@@ -65,8 +85,8 @@ class InstrumentVoice {
   }
 
   trigger(frequency: number, velocity: number, duration: string) {
-    const v = Math.max(0.2, Math.min(0.82, velocity))
-    this.synth.triggerAttackRelease(frequency, duration, undefined, v)
+    const v = Math.max(0.2, Math.min(0.75, velocity))
+    this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.68)
   }
 
   releaseAll() {
@@ -79,8 +99,101 @@ class InstrumentVoice {
   }
 }
 
+/** Wooden mallet tick + warm hollow tone. */
+class MarimbaVoice implements Voice {
+  private synth: Tone.PolySynth<Tone.MembraneSynth>
+  private output: Tone.Gain
+
+  constructor() {
+    this.output = new Tone.Gain(0.74)
+    this.synth = new Tone.PolySynth(Tone.MembraneSynth, {
+      pitchDecay: 0.006,
+      octaves: 1.6,
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.48, sustain: 0.03, release: 0.75 },
+    })
+    this.synth.maxPolyphony = 12
+    this.synth.connect(this.output)
+  }
+
+  connect(destination: Tone.InputNode) {
+    this.output.connect(destination)
+  }
+
+  trigger(frequency: number, velocity: number, duration: string) {
+    const v = Math.max(0.2, Math.min(0.76, velocity))
+    this.synth.triggerAttackRelease(frequency, duration, undefined, v * 0.62)
+  }
+
+  releaseAll() {
+    this.synth.releaseAll()
+  }
+
+  dispose() {
+    this.synth.dispose()
+    this.output.dispose()
+  }
+}
+
+/** Percussive musical hit — pitched pulse, not a kick or bass guitar. */
+class BeatVoice implements Voice {
+  private body: Tone.PolySynth<Tone.MembraneSynth>
+  private accent: Tone.NoiseSynth
+  private output: Tone.Gain
+
+  constructor() {
+    this.output = new Tone.Gain(0.68)
+    this.body = new Tone.PolySynth(Tone.MembraneSynth, {
+      pitchDecay: 0.035,
+      octaves: 1.3,
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.22, sustain: 0.02, release: 0.38 },
+    })
+    this.accent = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.018, sustain: 0, release: 0.01 },
+    })
+    this.body.maxPolyphony = 12
+    this.body.connect(this.output)
+    this.accent.connect(this.output)
+  }
+
+  connect(destination: Tone.InputNode) {
+    this.output.connect(destination)
+  }
+
+  trigger(frequency: number, velocity: number, duration: string) {
+    const v = Math.max(0.18, Math.min(0.72, velocity))
+    this.body.triggerAttackRelease(frequency, duration, undefined, v * 0.55)
+    this.accent.triggerAttackRelease('64n', undefined, v * 0.12)
+  }
+
+  releaseAll() {
+    this.body.releaseAll()
+  }
+
+  dispose() {
+    this.body.dispose()
+    this.accent.dispose()
+    this.output.dispose()
+  }
+}
+
+function createVoice(id: InstrumentId): Voice {
+  switch (id) {
+    case 'piano':
+      return new PianoVoice()
+    case 'harp':
+      return new HarpVoice()
+    case 'marimba':
+      return new MarimbaVoice()
+    case 'beat':
+      return new BeatVoice()
+  }
+}
+
 export class AudioEngine {
-  private voices: Map<InstrumentId, InstrumentVoice> = new Map()
+  private voices: Map<InstrumentId, Voice> = new Map()
   private delay: Tone.FeedbackDelay
   private masterGain: Tone.Gain
   private started = false
@@ -101,7 +214,7 @@ export class AudioEngine {
     this.delay.connect(this.masterGain)
 
     for (const id of INSTRUMENT_IDS) {
-      const voice = new InstrumentVoice(id)
+      const voice = createVoice(id)
       voice.connect(this.delay)
       this.voices.set(id, voice)
     }
@@ -169,7 +282,7 @@ export class AudioEngine {
   ) {
     if (!this.powered || !this.started) return
 
-    const frequency = wallToFrequency(wall, normalizedY, this.scale)
+    const frequency = wallToFrequency(wall, normalizedY, this.scale, undefined, instrument)
     const speedFactor = Math.max(impactSpeed, 8) / 350
     const velocity = Math.max(0.28, Math.min(0.88, speedFactor * this.getVelocityScale() + 0.22))
     const duration = NOTE_DURATIONS[instrument]
