@@ -230,10 +230,9 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
     }, [powered, emitCount])
 
     const spawnParticle = useCallback(
-      async (x: number, y: number, vx: number, vy: number) => {
+      (x: number, y: number, vx: number, vy: number) => {
         if (!poweredRef.current) return
-        const engine = getAudioEngine()
-        await engine.ensureStarted()
+        void getAudioEngine().ensureStarted()
 
         const particle = createParticle(x, y, vx, vy, instrumentRef.current)
         particlesRef.current = enforceCap([...particlesRef.current, particle])
@@ -305,7 +304,7 @@ export const StageCanvas = forwardRef<StageCanvasHandle, StageCanvasProps>(
             )
             pushTrail(p)
 
-            if (wall && now - p.lastHitAt > 20) {
+            if (wall && now - p.lastHitAt > 60) {
               p.lastHitAt = now
               const normalizedY = p.y / h
               engine.playWallHit(p.instrument, wall, normalizedY, impactSpeed)

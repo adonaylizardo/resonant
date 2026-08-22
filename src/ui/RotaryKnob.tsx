@@ -1,25 +1,63 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface RotaryKnobProps {
   label: string
   value: number
   onChange: (v: number) => void
   readout?: string
+  formatReadout?: (value: number) => string
   active?: boolean
+  /** When set, LED follows local drag value above this threshold. */
+  activeAbove?: number
 }
 
 const MIN_ANGLE = -135
 const MAX_ANGLE = 135
+/** Throttle parent commits while dragging — keeps audio/UI in sync without flooding React. */
+const COMMIT_INTERVAL_MS = 48
 
-export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKnobProps) {
+export function RotaryKnob({
+  label,
+  value,
+  onChange,
+  readout,
+  formatReadout,
+  active,
+  activeAbove,
+}: RotaryKnobProps) {
   const dragging = useRef(false)
   const startY = useRef(0)
   const startValue = useRef(0)
   const knobRef = useRef<HTMLDivElement>(null)
+  const pendingValue = useRef(value)
+  const lastCommitAt = useRef(0)
+  const [displayValue, setDisplayValue] = useState(value)
 
-  const angle = MIN_ANGLE + value * (MAX_ANGLE - MIN_ANGLE)
+  useEffect(() => {
+    if (!dragging.current) {
+      pendingValue.current = value
+      setDisplayValue(value)
+    }
+  }, [value])
+
+  const angle = MIN_ANGLE + displayValue * (MAX_ANGLE - MIN_ANGLE)
 
   const clamp = (v: number) => Math.max(0, Math.min(1, v))
+
+  const commitValue = useCallback(
+    (next: number, force = false) => {
+      const clamped = clamp(next)
+      pendingValue.current = clamped
+      setDisplayValue(clamped)
+
+      const now = performance.now()
+      if (force || now - lastCommitAt.current >= COMMIT_INTERVAL_MS) {
+        lastCommitAt.current = now
+        onChange(clamped)
+      }
+    },
+    [onChange],
+  )
 
   const updateFromPointer = useCallback(
     (clientX: number, clientY: number, mode: 'drag' | 'polar') => {
@@ -28,7 +66,7 @@ export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKn
 
       if (mode === 'drag') {
         const dy = startY.current - clientY
-        onChange(clamp(startValue.current + dy / 140))
+        commitValue(startValue.current + dy / 140)
         return
       }
 
@@ -39,15 +77,15 @@ export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKn
       let deg = (rad * 180) / Math.PI + 90
       if (deg > 180) deg -= 360
       const t = clamp((deg - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE))
-      onChange(t)
+      commitValue(t)
     },
-    [onChange],
+    [commitValue],
   )
 
   const onPointerDown = (e: React.PointerEvent) => {
     dragging.current = true
     startY.current = e.clientY
-    startValue.current = value
+    startValue.current = pendingValue.current
     e.currentTarget.setPointerCapture(e.pointerId)
     updateFromPointer(e.clientX, e.clientY, 'polar')
   }
@@ -57,37 +95,43 @@ export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKn
     updateFromPointer(e.clientX, e.clientY, 'drag')
   }
 
-  const onPointerUp = (e: React.PointerEvent) => {
+  const endDrag = (e: React.PointerEvent) => {
+    if (!dragging.current) return
     dragging.current = false
-    e.currentTarget.releasePointerCapture(e.pointerId)
+    commitValue(pendingValue.current, true)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
       e.preventDefault()
-      onChange(clamp(value + 0.03))
+      commitValue(displayValue + 0.03, true)
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
       e.preventDefault()
-      onChange(clamp(value - 0.03))
+      commitValue(displayValue - 0.03, true)
     }
   }
 
+  const ledOn = activeAbove !== undefined ? displayValue > activeAbove : active
+
   return (
-    <div className={`knob ${active ? 'knob--active' : ''}`}>
+    <div className={`knob ${ledOn ? 'knob--active' : ''}`}>
       <div
         ref={knobRef}
         className="knob__housing"
         role="slider"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={Math.round(value * 100)}
+        aria-valuenow={Math.round(displayValue * 100)}
         aria-label={label}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         onKeyDown={onKeyDown}
       >
         <div className="knob__ticks" aria-hidden="true" />
@@ -96,9 +140,13 @@ export function RotaryKnob({ label, value, onChange, readout, active }: RotaryKn
         </div>
       </div>
       <span className="knob__label">{label}</span>
-      {readout !== undefined && <span className="knob__readout">{readout}</span>}
-      {active !== undefined && (
-        <span className={`knob__led ${active ? 'knob__led--on' : ''}`} aria-hidden="true" />
+      {(readout !== undefined || formatReadout) && (
+        <span className="knob__readout">
+          {formatReadout ? formatReadout(displayValue) : readout}
+        </span>
+      )}
+      {(active !== undefined || activeAbove !== undefined) && (
+        <span className={`knob__led ${ledOn ? 'knob__led--on' : ''}`} aria-hidden="true" />
       )}
     </div>
   )
