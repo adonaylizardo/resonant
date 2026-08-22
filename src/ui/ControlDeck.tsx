@@ -98,19 +98,19 @@ export function ControlDeck({
             label="TEMPO"
             value={tempo}
             onChange={onTempoChange}
-            readout={String(tempoReadout(tempo))}
+            formatReadout={(v) => String(tempoReadout(v))}
           />
           <RotaryKnob
             label="DELAY"
             value={delay}
             onChange={onDelayChange}
-            active={delay > 0.08}
+            activeAbove={0.08}
           />
           <RotaryKnob
             label="MOMENTUM"
             value={momentum}
             onChange={onMomentumChange}
-            active={momentum > 0.08}
+            activeAbove={0.08}
           />
         </div>
       </div>

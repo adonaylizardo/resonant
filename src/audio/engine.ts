@@ -192,13 +192,20 @@ function createVoice(id: InstrumentId): Voice {
   }
 }
 
+/** Per-particle cooldown is enforced in the stage loop; this caps total triggers per frame. */
+const MAX_HITS_PER_FRAME = 4
+const MIN_IMPACT_SPEED = 14
+
 export class AudioEngine {
   private voices: Map<InstrumentId, Voice> = new Map()
   private delay: Tone.FeedbackDelay
   private masterGain: Tone.Gain
   private recordDestination: MediaStreamAudioDestinationNode | null = null
   private started = false
+  private startPromise: Promise<void> | null = null
   private powered = false
+  private hitsThisFrame = 0
+  private hitFrameId = 0
 
   scale: ScaleId = 'pentatonic'
   tempo = 0.5
@@ -236,12 +243,16 @@ export class AudioEngine {
 
   async ensureStarted(): Promise<void> {
     if (this.started) return
-    await Tone.start()
-    this.started = true
-    if (this.powered) {
-      this.masterGain.gain.value = 1
-      Tone.getTransport().start()
+    if (!this.startPromise) {
+      this.startPromise = Tone.start().then(() => {
+        this.started = true
+        if (this.powered) {
+          this.masterGain.gain.value = 1
+          Tone.getTransport().start()
+        }
+      })
     }
+    await this.startPromise
   }
 
   setPowered(on: boolean) {
@@ -260,16 +271,17 @@ export class AudioEngine {
 
   setDelay(amount: number) {
     this.delayAmount = amount
-    this.delay.wet.rampTo(amount, 0.1)
-    this.delay.feedback.rampTo(0.15 + amount * 0.55, 0.1)
+    // Immediate assignment avoids stacking overlapping Tone ramps during knob drags.
+    this.delay.wet.value = amount
+    this.delay.feedback.value = 0.15 + amount * 0.55
   }
 
   setTempo(amount: number) {
     this.tempo = amount
     const bpm = 60 + amount * 100
-    Tone.getTransport().bpm.rampTo(bpm, 0.15)
+    Tone.getTransport().bpm.value = bpm
     const delayTime = amount < 0.33 ? '8n' : amount < 0.66 ? '4n.' : '4n'
-    this.delay.delayTime.rampTo(delayTime, 0.15)
+    this.delay.delayTime.value = Tone.Time(delayTime).toSeconds()
   }
 
   setScale(scale: ScaleId) {
@@ -295,6 +307,15 @@ export class AudioEngine {
     impactSpeed: number,
   ) {
     if (!this.powered || !this.started) return
+    if (impactSpeed < MIN_IMPACT_SPEED) return
+
+    const frameId = Math.floor(performance.now())
+    if (frameId !== this.hitFrameId) {
+      this.hitFrameId = frameId
+      this.hitsThisFrame = 0
+    }
+    if (this.hitsThisFrame >= MAX_HITS_PER_FRAME) return
+    this.hitsThisFrame++
 
     const frequency = wallToFrequency(wall, normalizedY, this.scale, undefined, instrument)
     const speedFactor = Math.max(impactSpeed, 8) / 350

@@ -32,17 +32,29 @@ export default function App() {
     engine.setScale(scale)
   }, [scale, engine])
 
-  useEffect(() => {
-    engine.setTempo(tempo)
-  }, [tempo, engine])
+  const handleTempoChange = useCallback(
+    (v: number) => {
+      setTempo(v)
+      engine.setTempo(v)
+    },
+    [engine],
+  )
 
-  useEffect(() => {
-    engine.setDelay(delay)
-  }, [delay, engine])
+  const handleDelayChange = useCallback(
+    (v: number) => {
+      setDelay(v)
+      engine.setDelay(v)
+    },
+    [engine],
+  )
 
-  useEffect(() => {
-    engine.setMomentum(momentum)
-  }, [momentum, engine])
+  const handleMomentumChange = useCallback(
+    (v: number) => {
+      setMomentum(v)
+      engine.setMomentum(v)
+    },
+    [engine],
+  )
 
   const finishRecording = useCallback(async () => {
     const result = await stageRecorder.stop()
@@ -138,11 +150,11 @@ export default function App() {
             scale={scale}
             onScaleChange={setScale}
             tempo={tempo}
-            onTempoChange={setTempo}
+            onTempoChange={handleTempoChange}
             delay={delay}
-            onDelayChange={setDelay}
+            onDelayChange={handleDelayChange}
             momentum={momentum}
-            onMomentumChange={setMomentum}
+            onMomentumChange={handleMomentumChange}
           />
         }
       />
