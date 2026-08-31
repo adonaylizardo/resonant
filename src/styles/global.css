@@ -663,6 +663,24 @@ body,
 
 /* ── Record modal (hardware take tray) ── */
 
+.record-finalizing {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(7, 7, 8, 0.88);
+}
+
+.record-finalizing__label {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .record-modal-backdrop {
   position: fixed;
   inset: 0;

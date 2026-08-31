@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RecordingResult } from '../recording/recorder'
+import { MP4_VIDEO_MIME } from '../recording/recorder'
 import { downloadBlob, recordingFilename, shareVideoFile } from '../recording/utils'
 
 interface RecordModalProps {
@@ -10,6 +11,7 @@ interface RecordModalProps {
 export function RecordModal({ result, onClose }: RecordModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const videoUrlRef = useRef<string | null>(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     const url = URL.createObjectURL(result.videoBlob)
@@ -22,11 +24,16 @@ export function RecordModal({ result, onClose }: RecordModalProps) {
     }
   }, [result.videoBlob])
 
-  const videoName = recordingFilename('resonant', result.videoMime)
+  const videoName = recordingFilename('resonant', MP4_VIDEO_MIME)
   const audioName = recordingFilename('resonant-audio', result.audioMime)
 
   const handleShare = async () => {
-    await shareVideoFile(result.videoBlob, result.videoMime, videoName)
+    setSharing(true)
+    try {
+      await shareVideoFile(result.videoBlob, videoName)
+    } finally {
+      setSharing(false)
+    }
   }
 
   const handleDownloadVideo = () => {
@@ -63,8 +70,13 @@ export function RecordModal({ result, onClose }: RecordModalProps) {
         </div>
 
         <div className="record-modal__actions">
-          <button type="button" className="record-modal__btn record-modal__btn--primary" onClick={handleShare}>
-            SHARE
+          <button
+            type="button"
+            className="record-modal__btn record-modal__btn--primary"
+            onClick={handleShare}
+            disabled={sharing}
+          >
+            {sharing ? 'PREPARING…' : 'SHARE'}
           </button>
           <div className="record-modal__secondary">
             <button type="button" className="record-modal__btn" onClick={handleDownloadVideo}>

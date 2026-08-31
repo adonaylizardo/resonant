@@ -1,15 +1,5 @@
-export function pickVideoMime(): string {
-  const candidates = [
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4',
-  ]
-  for (const mime of candidates) {
-    if (MediaRecorder.isTypeSupported(mime)) return mime
-  }
-  return 'video/webm'
-}
+export { evenDimension, pickNativeMp4Mime, resolveMp4Backend } from './mp4Capabilities'
+export { MP4_VIDEO_MIME } from './recorder'
 
 export function pickAudioMime(): string {
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
@@ -40,8 +30,8 @@ export function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-export async function shareVideoFile(blob: Blob, mime: string, filename: string): Promise<'shared' | 'downloaded'> {
-  const file = new File([blob], filename, { type: mime })
+export async function shareVideoFile(blob: Blob, filename: string): Promise<'shared' | 'downloaded'> {
+  const file = new File([blob], filename, { type: 'video/mp4' })
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({
       files: [file],
