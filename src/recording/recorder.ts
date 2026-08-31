@@ -1,4 +1,5 @@
 import { getAudioEngine } from '../audio/engine'
+import { ExportCompositor } from './exportCompositor'
 import { pickNativeMp4Mime, resolveMp4Backend } from './mp4Capabilities'
 import { pickAudioMime } from './utils'
 import { WebCodecsMp4Recorder } from './webCodecsMp4Recorder'
@@ -20,6 +21,7 @@ export class StageRecorder {
   private webCodecsRecorder: WebCodecsMp4Recorder | null = null
   private videoRecorder: MediaRecorder | null = null
   private audioRecorder: MediaRecorder | null = null
+  private exportCompositor: ExportCompositor | null = null
   private videoChunks: Blob[] = []
   private audioChunks: Blob[] = []
   private audioMime = pickAudioMime()
@@ -39,7 +41,7 @@ export class StageRecorder {
     return Date.now() - this.startedAt
   }
 
-  async start(canvas: HTMLCanvasElement, onAutoStop: () => void): Promise<void> {
+  async start(stageCanvas: HTMLCanvasElement, onAutoStop: () => void): Promise<void> {
     if (this.isRecording) return
 
     await getAudioEngine().ensureStarted()
@@ -50,6 +52,10 @@ export class StageRecorder {
     this.audioMime = pickAudioMime()
     this.startedAt = Date.now()
 
+    this.exportCompositor = new ExportCompositor()
+    await this.exportCompositor.start(stageCanvas)
+    const exportCanvas = this.exportCompositor.getCanvas()
+
     const backend = await resolveMp4Backend()
     this.backend = backend
 
@@ -57,7 +63,7 @@ export class StageRecorder {
 
     if (backend === 'webcodecs') {
       this.webCodecsRecorder = new WebCodecsMp4Recorder()
-      await this.webCodecsRecorder.start(canvas, audioStream)
+      await this.webCodecsRecorder.start(exportCanvas, audioStream)
       this.startAudioOnlyRecorder(audioStream)
     } else {
       const nativeMime = pickNativeMp4Mime()
@@ -65,7 +71,7 @@ export class StageRecorder {
         throw new Error('Native MP4 recording is unavailable in this browser.')
       }
 
-      const canvasStream = canvas.captureStream(30)
+      const canvasStream = exportCanvas.captureStream(30)
       const combined = new MediaStream([
         ...canvasStream.getVideoTracks(),
         ...audioStream.getAudioTracks(),
@@ -117,6 +123,8 @@ export class StageRecorder {
     this.audioRecorder = null
     this.backend = null
     this.startedAt = 0
+    this.exportCompositor?.stop()
+    this.exportCompositor = null
 
     if (videoBlob.size === 0 && durationMs < 300) return null
 
@@ -153,6 +161,8 @@ export class StageRecorder {
     this.videoChunks = []
     this.audioChunks = []
     this.startedAt = 0
+    this.exportCompositor?.stop()
+    this.exportCompositor = null
   }
 
   private startAudioOnlyRecorder(audioStream: MediaStream): void {
