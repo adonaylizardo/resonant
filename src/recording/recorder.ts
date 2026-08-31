@@ -15,6 +15,8 @@ export interface RecordingResult {
 }
 
 const MAX_RECORD_MS = 60_000
+const MEDIARECORDER_VIDEO_BITRATE = 7_000_000
+const MEDIARECORDER_AUDIO_BITRATE = 128_000
 
 export class StageRecorder {
   private backend: 'webcodecs' | 'mediarecorder' | null = null
@@ -77,7 +79,11 @@ export class StageRecorder {
         ...audioStream.getAudioTracks(),
       ])
 
-      this.videoRecorder = new MediaRecorder(combined, { mimeType: nativeMime })
+      this.videoRecorder = new MediaRecorder(combined, {
+        mimeType: nativeMime,
+        videoBitsPerSecond: MEDIARECORDER_VIDEO_BITRATE,
+        audioBitsPerSecond: MEDIARECORDER_AUDIO_BITRATE,
+      })
       this.videoRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) this.videoChunks.push(event.data)
       }

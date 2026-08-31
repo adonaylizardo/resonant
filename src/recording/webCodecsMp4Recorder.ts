@@ -1,7 +1,6 @@
 import { ArrayBufferTarget, Muxer } from 'mp4-muxer'
-import { evenDimension } from './mp4Capabilities'
+import { computeVideoBitrate, evenDimension } from './mp4Capabilities'
 
-const VIDEO_BITRATE = 6_000_000
 const AUDIO_BITRATE = 128_000
 const SAMPLE_RATE = 48_000
 const CHANNELS = 2
@@ -56,7 +55,7 @@ export class WebCodecsMp4Recorder {
       codec: 'avc1.42001f',
       width,
       height,
-      bitrate: VIDEO_BITRATE,
+      bitrate: computeVideoBitrate(width, height),
       framerate: 30,
     })
 
