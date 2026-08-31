@@ -17,6 +17,7 @@ export default function App() {
   const [hasThrown, setHasThrown] = useState(false)
   const [particleCount, setParticleCount] = useState(0)
   const [recording, setRecording] = useState(false)
+  const [finalizingRecording, setFinalizingRecording] = useState(false)
   const [recordingResult, setRecordingResult] = useState<RecordingResult | null>(null)
   const [activeInstrument, setActiveInstrument] = useState<InstrumentId>('piano')
   const [scale, setScale] = useState<ScaleId>('pentatonic')
@@ -57,10 +58,15 @@ export default function App() {
   )
 
   const finishRecording = useCallback(async () => {
-    const result = await stageRecorder.stop()
     setRecording(false)
-    if (result && result.durationMs >= 300) {
-      setRecordingResult(result)
+    setFinalizingRecording(true)
+    try {
+      const result = await stageRecorder.stop()
+      if (result && result.durationMs >= 300) {
+        setRecordingResult(result)
+      }
+    } finally {
+      setFinalizingRecording(false)
     }
   }, [stageRecorder])
 
@@ -87,10 +93,15 @@ export default function App() {
 
     if (!next) {
       if (recording) {
-        const result = await stageRecorder.stop()
         setRecording(false)
-        if (result && result.durationMs >= 300) {
-          setRecordingResult(result)
+        setFinalizingRecording(true)
+        try {
+          const result = await stageRecorder.stop()
+          if (result && result.durationMs >= 300) {
+            setRecordingResult(result)
+          }
+        } finally {
+          setFinalizingRecording(false)
         }
       }
       stageRef.current?.clearParticles()
@@ -158,6 +169,11 @@ export default function App() {
           />
         }
       />
+      {finalizingRecording && (
+        <div className="record-finalizing" role="status" aria-live="polite">
+          <p className="record-finalizing__label">FINALIZING TAKE…</p>
+        </div>
+      )}
       {recordingResult && (
         <RecordModal result={recordingResult} onClose={handleCloseModal} />
       )}

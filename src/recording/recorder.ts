@@ -1,10 +1,14 @@
 import { getAudioEngine } from '../audio/engine'
-import { pickAudioMime, pickVideoMime } from './utils'
+import { pickNativeMp4Mime, resolveMp4Backend } from './mp4Capabilities'
+import { pickAudioMime } from './utils'
+import { WebCodecsMp4Recorder } from './webCodecsMp4Recorder'
+
+export const MP4_VIDEO_MIME = 'video/mp4'
 
 export interface RecordingResult {
   videoBlob: Blob
   audioBlob: Blob
-  videoMime: string
+  videoMime: typeof MP4_VIDEO_MIME
   audioMime: string
   durationMs: number
 }
@@ -12,17 +16,21 @@ export interface RecordingResult {
 const MAX_RECORD_MS = 60_000
 
 export class StageRecorder {
+  private backend: 'webcodecs' | 'mediarecorder' | null = null
+  private webCodecsRecorder: WebCodecsMp4Recorder | null = null
   private videoRecorder: MediaRecorder | null = null
   private audioRecorder: MediaRecorder | null = null
   private videoChunks: Blob[] = []
   private audioChunks: Blob[] = []
-  private videoMime = pickVideoMime()
   private audioMime = pickAudioMime()
   private startedAt = 0
   private autoStopTimer: ReturnType<typeof setTimeout> | null = null
   private onAutoStop: (() => void) | null = null
 
   get isRecording(): boolean {
+    if (this.backend === 'webcodecs') {
+      return this.webCodecsRecorder?.isRecording ?? false
+    }
     return this.videoRecorder?.state === 'recording'
   }
 
@@ -39,30 +47,37 @@ export class StageRecorder {
     this.onAutoStop = onAutoStop
     this.videoChunks = []
     this.audioChunks = []
-    this.videoMime = pickVideoMime()
     this.audioMime = pickAudioMime()
+    this.startedAt = Date.now()
 
-    const canvasStream = canvas.captureStream(30)
+    const backend = await resolveMp4Backend()
+    this.backend = backend
+
     const audioStream = getAudioEngine().getRecordingStream()
 
-    const combined = new MediaStream([
-      ...canvasStream.getVideoTracks(),
-      ...audioStream.getAudioTracks(),
-    ])
+    if (backend === 'webcodecs') {
+      this.webCodecsRecorder = new WebCodecsMp4Recorder()
+      await this.webCodecsRecorder.start(canvas, audioStream)
+      this.startAudioOnlyRecorder(audioStream)
+    } else {
+      const nativeMime = pickNativeMp4Mime()
+      if (!nativeMime) {
+        throw new Error('Native MP4 recording is unavailable in this browser.')
+      }
 
-    this.videoRecorder = new MediaRecorder(combined, { mimeType: this.videoMime })
-    this.audioRecorder = new MediaRecorder(audioStream, { mimeType: this.audioMime })
+      const canvasStream = canvas.captureStream(30)
+      const combined = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioStream.getAudioTracks(),
+      ])
 
-    this.videoRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) this.videoChunks.push(e.data)
+      this.videoRecorder = new MediaRecorder(combined, { mimeType: nativeMime })
+      this.videoRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) this.videoChunks.push(event.data)
+      }
+      this.videoRecorder.start(250)
+      this.startAudioOnlyRecorder(audioStream)
     }
-    this.audioRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) this.audioChunks.push(e.data)
-    }
-
-    this.videoRecorder.start(250)
-    this.audioRecorder.start(250)
-    this.startedAt = Date.now()
 
     this.autoStopTimer = setTimeout(() => {
       this.onAutoStop?.()
@@ -70,7 +85,7 @@ export class StageRecorder {
   }
 
   async stop(): Promise<RecordingResult | null> {
-    if (!this.videoRecorder || this.videoRecorder.state === 'inactive') {
+    if (!this.isRecording && !this.startedAt) {
       return null
     }
 
@@ -80,14 +95,27 @@ export class StageRecorder {
     }
 
     const durationMs = this.getDurationMs()
+    let videoBlob: Blob
+    let audioBlob: Blob
 
-    const videoBlob = await this.stopRecorder(this.videoRecorder, this.videoChunks, this.videoMime)
-    const audioBlob = this.audioRecorder
-      ? await this.stopRecorder(this.audioRecorder, this.audioChunks, this.audioMime)
-      : new Blob([], { type: this.audioMime })
+    if (this.backend === 'webcodecs' && this.webCodecsRecorder) {
+      videoBlob = await this.webCodecsRecorder.stop()
+      audioBlob = this.audioRecorder
+        ? await this.stopMediaRecorder(this.audioRecorder, this.audioChunks, this.audioMime)
+        : new Blob([], { type: this.audioMime })
+      this.webCodecsRecorder = null
+    } else if (this.videoRecorder) {
+      videoBlob = await this.stopMediaRecorder(this.videoRecorder, this.videoChunks, MP4_VIDEO_MIME)
+      audioBlob = this.audioRecorder
+        ? await this.stopMediaRecorder(this.audioRecorder, this.audioChunks, this.audioMime)
+        : new Blob([], { type: this.audioMime })
+    } else {
+      return null
+    }
 
     this.videoRecorder = null
     this.audioRecorder = null
+    this.backend = null
     this.startedAt = 0
 
     if (videoBlob.size === 0 && durationMs < 300) return null
@@ -95,7 +123,7 @@ export class StageRecorder {
     return {
       videoBlob,
       audioBlob,
-      videoMime: this.videoMime,
+      videoMime: MP4_VIDEO_MIME,
       audioMime: this.audioMime,
       durationMs,
     }
@@ -106,24 +134,44 @@ export class StageRecorder {
       clearTimeout(this.autoStopTimer)
       this.autoStopTimer = null
     }
+
+    if (this.backend === 'webcodecs') {
+      this.webCodecsRecorder?.discard()
+      this.webCodecsRecorder = null
+    }
+
     if (this.videoRecorder && this.videoRecorder.state !== 'inactive') {
       this.videoRecorder.stop()
     }
     if (this.audioRecorder && this.audioRecorder.state !== 'inactive') {
       this.audioRecorder.stop()
     }
+
     this.videoRecorder = null
     this.audioRecorder = null
+    this.backend = null
     this.videoChunks = []
     this.audioChunks = []
     this.startedAt = 0
   }
 
-  private stopRecorder(
+  private startAudioOnlyRecorder(audioStream: MediaStream): void {
+    this.audioRecorder = new MediaRecorder(audioStream, { mimeType: this.audioMime })
+    this.audioRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) this.audioChunks.push(event.data)
+    }
+    this.audioRecorder.start(250)
+  }
+
+  private stopMediaRecorder(
     recorder: MediaRecorder,
     chunks: Blob[],
     mime: string,
   ): Promise<Blob> {
+    if (recorder.state === 'inactive') {
+      return Promise.resolve(new Blob(chunks, { type: mime }))
+    }
+
     return new Promise((resolve) => {
       recorder.addEventListener(
         'stop',
