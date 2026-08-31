@@ -1,7 +1,5 @@
 import { evenDimension } from './mp4Capabilities'
 
-/** Matches desktop `.device` at 400px, scaled 2× for export quality. */
-const EXPORT_SCALE = 2
 const REM = 16
 
 const COLORS = {
@@ -24,59 +22,86 @@ const COLORS = {
   grilleLight: '#8A8680',
   grilleDark: '#6E6A64',
   powerHousing: '#1A1918',
-  powerLabel: 'rgba(22, 22, 24, 0.55)',
   powerLabelOn: '#FF5A36',
 } as const
 
-function scaled(value: number): number {
-  return value * EXPORT_SCALE
-}
-
-function rem(value: number): number {
-  return scaled(value * REM)
-}
-
-/** Layout derived from `global.css` `.device*` rules at 400px width, deck omitted. */
-const LAYOUT = {
-  deviceWidth: scaled(400),
-  padX: rem(0.95),
-  padY: rem(0.85),
-  radius: scaled(20),
-  screwInset: rem(0.55),
-  screwSize: scaled(7),
-  topPadX: rem(0.35),
-  topPadTop: rem(0.1),
-  topPadBottom: rem(0.5),
-  topMarginBottom: rem(0.1),
-  markFont: rem(0.78),
+/** CSS `.device*` metrics from `global.css` (rem / px at 1×). */
+const CSS = {
+  padX: 0.95,
+  padY: 0.85,
+  radius: 20,
+  screwInset: 0.55,
+  screwSize: 7,
+  topPadX: 0.35,
+  topPadTop: 0.1,
+  topPadBottom: 0.5,
+  topMarginBottom: 0.1,
+  markFont: 0.78,
   markTracking: 0.32,
-  headerBorder: scaled(1),
-  powerGap: rem(0.5),
-  powerPadY: rem(0.35),
-  powerPadX: rem(0.55),
-  powerPadLeft: rem(0.4),
-  powerRadius: scaled(6),
-  powerHousing: scaled(16),
-  powerLed: scaled(8),
-  powerFont: rem(0.52),
+  headerBorder: 1,
+  powerGap: 0.5,
+  powerPadY: 0.35,
+  powerPadX: 0.55,
+  powerPadLeft: 0.4,
+  powerRadius: 6,
+  powerHousing: 16,
+  powerLed: 8,
+  powerFont: 0.52,
   powerTracking: 0.16,
-  screenWellMin: scaled(280),
-  screenWellMarginBottom: rem(0.1),
-  grilleHeight: scaled(10),
-  grilleGap: rem(0.35),
-  grilleMarginX: rem(0.5),
-  grilleRadius: scaled(3),
-  bezelPad: rem(0.55),
-  bezelRadius: scaled(14),
-  screenRadius: scaled(8),
-  pagePad: rem(1),
+  screenWellMarginBottom: 0.1,
+  grilleHeight: 10,
+  grilleGap: 0.35,
+  grilleMarginX: 0.5,
+  grilleRadius: 3,
+  bezelPad: 0.55,
+  bezelRadius: 14,
+  screenRadius: 8,
+  pagePad: 1,
 } as const
 
-function computeDeviceHeight(): number {
-  const headerContent = Math.max(LAYOUT.markFont, LAYOUT.powerHousing + LAYOUT.powerPadY * 2)
-  const headerH =
-    LAYOUT.topPadTop + LAYOUT.topPadBottom + headerContent + LAYOUT.topMarginBottom + LAYOUT.headerBorder
-  return LAYOUT.padY * 2 + headerH + LAYOUT.screenWellMin + LAYOUT.screenWellMarginBottom
+export interface StageMetrics {
+  clientWidth: number
+  clientHeight: number
+  pixelWidth: number
+  pixelHeight: number
+  /** Backing-store pixels per CSS pixel (`width / clientWidth`). */
+  scale: number
+}
+
+export interface ScaledDeviceMetrics {
+  scale: number
+  rem: (value: number) => number
+  px: (value: number) => number
+  padX: number
+  padY: number
+  radius: number
+  screwInset: number
+  screwSize: number
+  topPadX: number
+  topPadTop: number
+  topPadBottom: number
+  topMarginBottom: number
+  markFont: number
+  markTracking: number
+  headerBorder: number
+  powerGap: number
+  powerPadY: number
+  powerPadX: number
+  powerPadLeft: number
+  powerRadius: number
+  powerHousing: number
+  powerLed: number
+  powerFont: number
+  powerTracking: number
+  screenWellMarginBottom: number
+  grilleHeight: number
+  grilleGap: number
+  grilleMarginX: number
+  grilleRadius: number
+  bezelPad: number
+  bezelRadius: number
+  screenRadius: number
+  pagePad: number
 }
 
 export interface ExportCompositorLayout {
@@ -90,51 +115,146 @@ export interface ExportCompositorLayout {
   screenY: number
   screenWidth: number
   screenHeight: number
+  metrics: ScaledDeviceMetrics
+  headerHeight: number
+  bezelOuterY: number
+  bezelOuterHeight: number
 }
 
-export function getExportLayout(): ExportCompositorLayout {
-  const deviceHeight = computeDeviceHeight()
-  const canvasWidth = evenDimension(LAYOUT.deviceWidth + LAYOUT.pagePad * 2)
-  const canvasHeight = evenDimension(deviceHeight + LAYOUT.pagePad * 2)
-  const innerWidth = LAYOUT.deviceWidth - LAYOUT.padX * 2
-  const headerContent = Math.max(LAYOUT.markFont, LAYOUT.powerHousing + LAYOUT.powerPadY * 2)
-  const headerH =
-    LAYOUT.topPadTop + LAYOUT.topPadBottom + headerContent + LAYOUT.topMarginBottom + LAYOUT.headerBorder
-  const screenWellTop = LAYOUT.padY + headerH
-  const bezelTop = screenWellTop + LAYOUT.grilleHeight + LAYOUT.grilleGap
-  const screenX = LAYOUT.pagePad + LAYOUT.padX + LAYOUT.bezelPad
-  const screenY = LAYOUT.pagePad + bezelTop + LAYOUT.bezelPad
-  const screenWidth = innerWidth - LAYOUT.bezelPad * 2
-  const screenHeight =
-    LAYOUT.screenWellMin - LAYOUT.grilleHeight - LAYOUT.grilleGap - LAYOUT.bezelPad * 2
+/** Measure live stage canvas; derive scale from backing store ÷ CSS size. */
+export function measureStageCanvas(stageCanvas: HTMLCanvasElement): StageMetrics {
+  let clientWidth = stageCanvas.clientWidth
+  let clientHeight = stageCanvas.clientHeight
+  let pixelWidth = stageCanvas.width
+  let pixelHeight = stageCanvas.height
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+
+  if (clientWidth <= 0 || clientHeight <= 0) {
+    if (pixelWidth > 0 && pixelHeight > 0) {
+      clientWidth = pixelWidth / dpr
+      clientHeight = pixelHeight / dpr
+    } else {
+      clientWidth = 352
+      clientHeight = Math.round(clientWidth * 1.35)
+      pixelWidth = Math.round(clientWidth * dpr)
+      pixelHeight = Math.round(clientHeight * dpr)
+    }
+  }
+
+  if (pixelWidth <= 0 || pixelHeight <= 0) {
+    const scale = pixelWidth > 0 && clientWidth > 0 ? pixelWidth / clientWidth : dpr
+    pixelWidth = Math.round(clientWidth * scale)
+    pixelHeight = Math.round(clientHeight * scale)
+  }
+
+  const scale = clientWidth > 0 ? pixelWidth / clientWidth : dpr
+
+  return {
+    clientWidth,
+    clientHeight,
+    pixelWidth,
+    pixelHeight,
+    scale,
+  }
+}
+
+function createScaledMetrics(stageScale: number): ScaledDeviceMetrics {
+  const rem = (value: number) => value * REM * stageScale
+  const px = (value: number) => value * stageScale
+
+  return {
+    scale: stageScale,
+    rem,
+    px,
+    padX: rem(CSS.padX),
+    padY: rem(CSS.padY),
+    radius: px(CSS.radius),
+    screwInset: rem(CSS.screwInset),
+    screwSize: px(CSS.screwSize),
+    topPadX: rem(CSS.topPadX),
+    topPadTop: rem(CSS.topPadTop),
+    topPadBottom: rem(CSS.topPadBottom),
+    topMarginBottom: rem(CSS.topMarginBottom),
+    markFont: rem(CSS.markFont),
+    markTracking: CSS.markTracking,
+    headerBorder: px(CSS.headerBorder),
+    powerGap: rem(CSS.powerGap),
+    powerPadY: rem(CSS.powerPadY),
+    powerPadX: rem(CSS.powerPadX),
+    powerPadLeft: rem(CSS.powerPadLeft),
+    powerRadius: px(CSS.powerRadius),
+    powerHousing: px(CSS.powerHousing),
+    powerLed: px(CSS.powerLed),
+    powerFont: rem(CSS.powerFont),
+    powerTracking: CSS.powerTracking,
+    screenWellMarginBottom: rem(CSS.screenWellMarginBottom),
+    grilleHeight: px(CSS.grilleHeight),
+    grilleGap: rem(CSS.grilleGap),
+    grilleMarginX: rem(CSS.grilleMarginX),
+    grilleRadius: px(CSS.grilleRadius),
+    bezelPad: rem(CSS.bezelPad),
+    bezelRadius: px(CSS.bezelRadius),
+    screenRadius: px(CSS.screenRadius),
+    pagePad: rem(CSS.pagePad),
+  }
+}
+
+function computeHeaderHeight(m: ScaledDeviceMetrics): number {
+  const headerContent = Math.max(m.markFont, m.powerHousing + m.powerPadY * 2)
+  return m.topPadTop + m.topPadBottom + headerContent + m.topMarginBottom + m.headerBorder
+}
+
+/** Layout: live CRT backing-store pixels are the source of truth; chrome wraps them. */
+export function getExportLayout(stage: StageMetrics): ExportCompositorLayout {
+  const metrics = createScaledMetrics(stage.scale)
+  const screenWidth = evenDimension(stage.pixelWidth)
+  const screenHeight = evenDimension(stage.pixelHeight)
+
+  const innerWidth = screenWidth + metrics.bezelPad * 2
+  const deviceWidth = innerWidth + metrics.padX * 2
+  const headerHeight = computeHeaderHeight(metrics)
+  const bezelOuterHeight = screenHeight + metrics.bezelPad * 2
+  const screenWellHeight = metrics.grilleHeight + metrics.grilleGap + bezelOuterHeight
+  const deviceHeight =
+    metrics.padY * 2 + headerHeight + screenWellHeight + metrics.screenWellMarginBottom
+
+  const canvasWidth = evenDimension(deviceWidth + metrics.pagePad * 2)
+  const canvasHeight = evenDimension(deviceHeight + metrics.pagePad * 2)
+
+  const deviceX = metrics.pagePad
+  const deviceY = metrics.pagePad
+  const screenX = deviceX + metrics.padX + metrics.bezelPad
+  const screenY = deviceY + metrics.padY + headerHeight + metrics.grilleHeight + metrics.grilleGap + metrics.bezelPad
+  const bezelOuterY = deviceY + metrics.padY + headerHeight + metrics.grilleHeight + metrics.grilleGap
 
   return {
     canvasWidth,
     canvasHeight,
-    deviceX: LAYOUT.pagePad,
-    deviceY: LAYOUT.pagePad,
-    deviceWidth: LAYOUT.deviceWidth,
+    deviceX,
+    deviceY,
+    deviceWidth,
     deviceHeight,
     screenX,
     screenY,
     screenWidth,
     screenHeight,
+    metrics,
+    headerHeight,
+    bezelOuterY,
+    bezelOuterHeight,
   }
 }
 
 export class ExportCompositor {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
-  private layout: ExportCompositorLayout
+  private layout: ExportCompositorLayout | null = null
   private rafId: number | null = null
   private stageCanvas: HTMLCanvasElement | null = null
   private running = false
 
   constructor() {
-    this.layout = getExportLayout()
     this.canvas = document.createElement('canvas')
-    this.canvas.width = this.layout.canvasWidth
-    this.canvas.height = this.layout.canvasHeight
     const ctx = this.canvas.getContext('2d', { alpha: false })
     if (!ctx) throw new Error('Export canvas 2D context unavailable.')
     this.ctx = ctx
@@ -144,12 +264,18 @@ export class ExportCompositor {
     return this.canvas
   }
 
-  getLayout(): ExportCompositorLayout {
+  getLayout(): ExportCompositorLayout | null {
     return this.layout
   }
 
   async start(stageCanvas: HTMLCanvasElement): Promise<void> {
     if (this.running) return
+
+    const stage = measureStageCanvas(stageCanvas)
+    this.layout = getExportLayout(stage)
+    this.canvas.width = this.layout.canvasWidth
+    this.canvas.height = this.layout.canvasHeight
+
     this.stageCanvas = stageCanvas
     this.running = true
     await document.fonts.ready
@@ -165,13 +291,15 @@ export class ExportCompositor {
       this.rafId = null
     }
     this.stageCanvas = null
+    this.layout = null
   }
 
   compositeFrame(): void {
     const stage = this.stageCanvas
-    if (!stage) return
+    const layout = this.layout
+    if (!stage || !layout) return
 
-    const { ctx, layout } = this
+    const { ctx } = this
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     this.drawPageBackground(ctx, layout)
     this.drawDeviceChassis(ctx, layout)
@@ -216,13 +344,13 @@ export class ExportCompositor {
   }
 
   private drawDeviceChassis(ctx: CanvasRenderingContext2D, layout: ExportCompositorLayout): void {
-    const { deviceX, deviceY, deviceWidth, deviceHeight } = layout
-    const r = LAYOUT.radius
+    const { deviceX, deviceY, deviceWidth, deviceHeight, metrics } = layout
+    const r = metrics.radius
 
     ctx.save()
     ctx.shadowColor = 'rgba(0, 0, 0, 0.22)'
-    ctx.shadowBlur = scaled(28)
-    ctx.shadowOffsetY = scaled(8)
+    ctx.shadowBlur = metrics.px(28)
+    ctx.shadowOffsetY = metrics.px(8)
     roundRect(ctx, deviceX, deviceY, deviceWidth, deviceHeight, r)
 
     const body = ctx.createLinearGradient(deviceX, deviceY, deviceX + deviceWidth * 0.4, deviceY + deviceHeight)
@@ -237,15 +365,15 @@ export class ExportCompositor {
     ctx.shadowBlur = 0
     ctx.shadowOffsetY = 0
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
-    ctx.lineWidth = scaled(1)
+    ctx.lineWidth = metrics.px(1)
     ctx.stroke()
     ctx.restore()
   }
 
   private drawScrews(ctx: CanvasRenderingContext2D, layout: ExportCompositorLayout): void {
-    const { deviceX, deviceY, deviceWidth, deviceHeight } = layout
-    const inset = LAYOUT.screwInset
-    const size = LAYOUT.screwSize
+    const { deviceX, deviceY, deviceWidth, deviceHeight, metrics } = layout
+    const inset = metrics.screwInset
+    const size = metrics.screwSize
     const positions = [
       [deviceX + inset, deviceY + inset],
       [deviceX + deviceWidth - inset - size, deviceY + inset],
@@ -264,63 +392,69 @@ export class ExportCompositor {
       ctx.fillStyle = grad
       ctx.fill()
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'
-      ctx.lineWidth = scaled(1)
+      ctx.lineWidth = metrics.px(1)
       ctx.beginPath()
-      ctx.arc(x + size / 2, y + size / 2, size / 2 - scaled(2), -0.6, 2.5)
+      ctx.arc(x + size / 2, y + size / 2, size / 2 - metrics.px(2), -0.6, 2.5)
       ctx.stroke()
       ctx.restore()
     }
   }
 
   private drawHeader(ctx: CanvasRenderingContext2D, layout: ExportCompositorLayout): void {
-    const { deviceX, deviceY, deviceWidth } = layout
-    const innerLeft = deviceX + LAYOUT.padX
-    const innerRight = deviceX + deviceWidth - LAYOUT.padX
-    const headerTop = deviceY + LAYOUT.padY + LAYOUT.topPadTop
-    const headerContent = Math.max(LAYOUT.markFont, LAYOUT.powerHousing + LAYOUT.powerPadY * 2)
-    const headerBottom =
-      deviceY + LAYOUT.padY + LAYOUT.topPadTop + LAYOUT.topPadBottom + headerContent + LAYOUT.topMarginBottom
+    const { deviceX, deviceY, deviceWidth, metrics, headerHeight } = layout
+    const innerLeft = deviceX + metrics.padX
+    const innerRight = deviceX + deviceWidth - metrics.padX
+    const headerTop = deviceY + metrics.padY + metrics.topPadTop
+    const headerContent = Math.max(metrics.markFont, metrics.powerHousing + metrics.powerPadY * 2)
+    const headerBottom = deviceY + metrics.padY + headerHeight
 
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)'
-    ctx.lineWidth = LAYOUT.headerBorder
+    ctx.lineWidth = metrics.headerBorder
     ctx.beginPath()
     ctx.moveTo(innerLeft, headerBottom)
     ctx.lineTo(innerRight, headerBottom)
     ctx.stroke()
 
     ctx.save()
-    ctx.font = `800 ${LAYOUT.markFont}px Syne, sans-serif`
+    ctx.font = `800 ${metrics.markFont}px Syne, sans-serif`
     ctx.fillStyle = COLORS.mark
     ctx.textBaseline = 'middle'
-    ctx.letterSpacing = `${LAYOUT.markTracking}em`
+    ctx.letterSpacing = `${metrics.markTracking}em`
     ctx.shadowColor = 'rgba(255, 255, 255, 0.15)'
-    ctx.shadowOffsetY = scaled(1)
-    ctx.fillText('RESONANT', innerLeft + LAYOUT.topPadX, headerTop + headerContent / 2)
+    ctx.shadowOffsetY = metrics.px(1)
+    ctx.fillText('RESONANT', innerLeft + metrics.topPadX, headerTop + headerContent / 2)
     ctx.restore()
 
-    this.drawPowerIndicator(ctx, innerRight - LAYOUT.topPadX, headerTop + headerContent / 2)
+    this.drawPowerIndicator(ctx, layout, innerRight - metrics.topPadX, headerTop + headerContent / 2)
   }
 
-  private drawPowerIndicator(ctx: CanvasRenderingContext2D, rightX: number, centerY: number): void {
+  private drawPowerIndicator(
+    ctx: CanvasRenderingContext2D,
+    layout: ExportCompositorLayout,
+    rightX: number,
+    centerY: number,
+  ): void {
+    const { metrics } = layout
     const label = 'PWR'
-    ctx.font = `400 ${LAYOUT.powerFont}px "Fragment Mono", monospace`
+    ctx.font = `400 ${metrics.powerFont}px "Fragment Mono", monospace`
     ctx.textBaseline = 'middle'
     const labelWidth = ctx.measureText(label).width
-    const housingR = LAYOUT.powerHousing / 2
-    const totalWidth = LAYOUT.powerHousing + LAYOUT.powerGap + labelWidth + LAYOUT.powerPadLeft + LAYOUT.powerPadX
+    const housingR = metrics.powerHousing / 2
+    const totalWidth =
+      metrics.powerHousing + metrics.powerGap + labelWidth + metrics.powerPadLeft + metrics.powerPadX
     const btnX = rightX - totalWidth
-    const btnY = centerY - (LAYOUT.powerHousing + LAYOUT.powerPadY * 2) / 2
-    const btnH = LAYOUT.powerHousing + LAYOUT.powerPadY * 2
+    const btnY = centerY - (metrics.powerHousing + metrics.powerPadY * 2) / 2
+    const btnH = metrics.powerHousing + metrics.powerPadY * 2
     const btnW = totalWidth
 
-    roundRect(ctx, btnX, btnY, btnW, btnH, LAYOUT.powerRadius)
+    roundRect(ctx, btnX, btnY, btnW, btnH, metrics.powerRadius)
     const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH)
     btnGrad.addColorStop(0, '#9A9690')
     btnGrad.addColorStop(1, '#7A7670')
     ctx.fillStyle = btnGrad
     ctx.fill()
 
-    const housingCx = btnX + LAYOUT.powerPadLeft + housingR
+    const housingCx = btnX + metrics.powerPadLeft + housingR
     const housingCy = centerY
     ctx.beginPath()
     ctx.arc(housingCx, housingCy, housingR, 0, Math.PI * 2)
@@ -338,7 +472,7 @@ export class ExportCompositor {
     ctx.fillStyle = housingGrad
     ctx.fill()
 
-    const ledR = LAYOUT.powerLed / 2
+    const ledR = metrics.powerLed / 2
     ctx.beginPath()
     ctx.arc(housingCx, housingCy, ledR, 0, Math.PI * 2)
     const ledGrad = ctx.createRadialGradient(
@@ -354,27 +488,24 @@ export class ExportCompositor {
     ledGrad.addColorStop(1, '#C03018')
     ctx.fillStyle = ledGrad
     ctx.shadowColor = 'rgba(255, 90, 54, 0.85)'
-    ctx.shadowBlur = scaled(10)
+    ctx.shadowBlur = metrics.px(10)
     ctx.fill()
     ctx.shadowBlur = 0
 
     ctx.fillStyle = COLORS.powerLabelOn
-    ctx.letterSpacing = `${LAYOUT.powerTracking}em`
-    ctx.fillText(label, housingCx + housingR + LAYOUT.powerGap, centerY)
+    ctx.letterSpacing = `${metrics.powerTracking}em`
+    ctx.fillText(label, housingCx + housingR + metrics.powerGap, centerY)
   }
 
   private drawGrille(ctx: CanvasRenderingContext2D, layout: ExportCompositorLayout): void {
-    const { deviceX, deviceY, deviceWidth } = layout
-    const innerLeft = deviceX + LAYOUT.padX
-    const headerContent = Math.max(LAYOUT.markFont, LAYOUT.powerHousing + LAYOUT.powerPadY * 2)
-    const headerH =
-      LAYOUT.topPadTop + LAYOUT.topPadBottom + headerContent + LAYOUT.topMarginBottom + LAYOUT.headerBorder
-    const y = deviceY + LAYOUT.padY + headerH
-    const x = innerLeft + LAYOUT.grilleMarginX
-    const w = deviceWidth - LAYOUT.padX * 2 - LAYOUT.grilleMarginX * 2
-    const h = LAYOUT.grilleHeight
+    const { deviceX, deviceY, deviceWidth, metrics, headerHeight } = layout
+    const innerLeft = deviceX + metrics.padX
+    const y = deviceY + metrics.padY + headerHeight
+    const x = innerLeft + metrics.grilleMarginX
+    const w = deviceWidth - metrics.padX * 2 - metrics.grilleMarginX * 2
+    const h = metrics.grilleHeight
 
-    roundRect(ctx, x, y, w, h, LAYOUT.grilleRadius)
+    roundRect(ctx, x, y, w, h, metrics.grilleRadius)
     const base = ctx.createLinearGradient(x, y, x, y + h)
     base.addColorStop(0, COLORS.grilleLight)
     base.addColorStop(1, COLORS.grilleDark)
@@ -384,28 +515,23 @@ export class ExportCompositor {
     ctx.globalAlpha = 1
 
     ctx.save()
-    roundRect(ctx, x, y, w, h, LAYOUT.grilleRadius)
+    roundRect(ctx, x, y, w, h, metrics.grilleRadius)
     ctx.clip()
-    const stripe = scaled(3)
+    const stripe = metrics.px(3)
     for (let sx = x; sx < x + w; sx += stripe) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.12)'
-      ctx.fillRect(sx + scaled(2), y, scaled(1), h)
+      ctx.fillRect(sx + metrics.px(2), y, metrics.px(1), h)
     }
     ctx.restore()
   }
 
   private drawBezel(ctx: CanvasRenderingContext2D, layout: ExportCompositorLayout): void {
-    const { deviceX, deviceY, deviceWidth } = layout
-    const innerLeft = deviceX + LAYOUT.padX
-    const innerWidth = deviceWidth - LAYOUT.padX * 2
-    const headerContent = Math.max(LAYOUT.markFont, LAYOUT.powerHousing + LAYOUT.powerPadY * 2)
-    const headerH =
-      LAYOUT.topPadTop + LAYOUT.topPadBottom + headerContent + LAYOUT.topMarginBottom + LAYOUT.headerBorder
-    const y = deviceY + LAYOUT.padY + headerH + LAYOUT.grilleHeight + LAYOUT.grilleGap
-    const h = LAYOUT.screenWellMin - LAYOUT.grilleHeight - LAYOUT.grilleGap
+    const { deviceX, deviceWidth, metrics, bezelOuterY, bezelOuterHeight } = layout
+    const innerLeft = deviceX + metrics.padX
+    const innerWidth = deviceWidth - metrics.padX * 2
 
-    roundRect(ctx, innerLeft, y, innerWidth, h, LAYOUT.bezelRadius)
-    const grad = ctx.createLinearGradient(innerLeft, y, innerLeft + innerWidth * 0.3, y + h)
+    roundRect(ctx, innerLeft, bezelOuterY, innerWidth, bezelOuterHeight, metrics.bezelRadius)
+    const grad = ctx.createLinearGradient(innerLeft, bezelOuterY, innerLeft + innerWidth * 0.3, bezelOuterY + bezelOuterHeight)
     grad.addColorStop(0, COLORS.bezelLight)
     grad.addColorStop(0.4, COLORS.bezel)
     grad.addColorStop(1, COLORS.bezelDark)
@@ -413,11 +539,11 @@ export class ExportCompositor {
     ctx.fill()
 
     ctx.save()
-    roundRect(ctx, innerLeft, y, innerWidth, h, LAYOUT.bezelRadius)
+    roundRect(ctx, innerLeft, bezelOuterY, innerWidth, bezelOuterHeight, metrics.bezelRadius)
     ctx.strokeStyle = 'rgba(255, 90, 54, 0.08)'
-    ctx.lineWidth = scaled(16)
+    ctx.lineWidth = metrics.px(16)
     ctx.shadowColor = 'rgba(255, 90, 54, 0.08)'
-    ctx.shadowBlur = scaled(16)
+    ctx.shadowBlur = metrics.px(16)
     ctx.stroke()
     ctx.restore()
   }
@@ -427,8 +553,8 @@ export class ExportCompositor {
     layout: ExportCompositorLayout,
     stageCanvas: HTMLCanvasElement,
   ): void {
-    const { screenX, screenY, screenWidth, screenHeight } = layout
-    const r = LAYOUT.screenRadius
+    const { screenX, screenY, screenWidth, screenHeight, metrics } = layout
+    const r = metrics.screenRadius
 
     ctx.save()
     roundRect(ctx, screenX, screenY, screenWidth, screenHeight, r)
@@ -436,32 +562,42 @@ export class ExportCompositor {
     ctx.fill()
     ctx.clip()
 
-    if (stageCanvas.width > 0 && stageCanvas.height > 0) {
-      ctx.drawImage(stageCanvas, 0, 0, stageCanvas.width, stageCanvas.height, screenX, screenY, screenWidth, screenHeight)
+    const srcW = Math.min(stageCanvas.width, screenWidth)
+    const srcH = Math.min(stageCanvas.height, screenHeight)
+    if (srcW > 0 && srcH > 0) {
+      ctx.drawImage(stageCanvas, 0, 0, srcW, srcH, screenX, screenY, srcW, srcH)
     }
 
     ctx.strokeStyle = COLORS.bezelInner
-    ctx.lineWidth = scaled(2)
-    roundRect(ctx, screenX + scaled(1), screenY + scaled(1), screenWidth - scaled(2), screenHeight - scaled(2), r - scaled(1))
+    ctx.lineWidth = metrics.px(2)
+    roundRect(
+      ctx,
+      screenX + metrics.px(1),
+      screenY + metrics.px(1),
+      screenWidth - metrics.px(2),
+      screenHeight - metrics.px(2),
+      r - metrics.px(1),
+    )
     ctx.stroke()
 
-    const insetShadow = ctx.createLinearGradient(screenX, screenY, screenX, screenY + scaled(16))
+    const insetShadow = ctx.createLinearGradient(screenX, screenY, screenX, screenY + metrics.px(16))
     insetShadow.addColorStop(0, 'rgba(0, 0, 0, 0.55)')
     insetShadow.addColorStop(1, 'transparent')
     ctx.fillStyle = insetShadow
-    ctx.fillRect(screenX, screenY, screenWidth, scaled(16))
+    ctx.fillRect(screenX, screenY, screenWidth, metrics.px(16))
 
     ctx.strokeStyle = 'rgba(255, 90, 54, 0.1)'
-    ctx.lineWidth = scaled(2)
+    ctx.lineWidth = metrics.px(2)
     roundRect(ctx, screenX, screenY, screenWidth, screenHeight, r)
     ctx.stroke()
 
     ctx.restore()
   }
 
+  /** Faint gloss only — scanlines already live in StageCanvas; no darkening overlay. */
   private drawScreenGlass(ctx: CanvasRenderingContext2D, layout: ExportCompositorLayout): void {
-    const { screenX, screenY, screenWidth, screenHeight } = layout
-    const r = LAYOUT.screenRadius
+    const { screenX, screenY, screenWidth, screenHeight, metrics } = layout
+    const r = metrics.screenRadius
 
     ctx.save()
     roundRect(ctx, screenX, screenY, screenWidth, screenHeight, r)
@@ -487,11 +623,6 @@ export class ExportCompositor {
     topGlow.addColorStop(1, 'transparent')
     ctx.fillStyle = topGlow
     ctx.fillRect(screenX, screenY, screenWidth, screenHeight)
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
-    ctx.globalAlpha = 0.25
-    ctx.fillRect(screenX, screenY, screenWidth, screenHeight)
-    ctx.globalAlpha = 1
 
     ctx.restore()
   }

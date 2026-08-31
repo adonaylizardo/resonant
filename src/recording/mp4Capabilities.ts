@@ -71,3 +71,12 @@ export function evenDimension(value: number): number {
   const rounded = Math.max(2, Math.round(value))
   return rounded % 2 === 0 ? rounded : rounded - 1
 }
+
+/** ~864×758 reference frame; 6 Mbps floor, scales up for larger canvases. */
+const REF_EXPORT_PIXELS = 864 * 758
+const REF_VIDEO_BITRATE = 6_000_000
+
+export function computeVideoBitrate(width: number, height: number): number {
+  const pixels = width * height
+  return Math.max(REF_VIDEO_BITRATE, Math.round((REF_VIDEO_BITRATE * pixels) / REF_EXPORT_PIXELS))
+}
